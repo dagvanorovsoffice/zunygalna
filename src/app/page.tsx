@@ -33,7 +33,7 @@ export default function ZunygalnaApp() {
   const [activeTab, setActiveTab] = useState<ActiveTab>('intro');
   const [profile, setProfile] = useState<UserProfile>(DEFAULT_USER_PROFILE);
   const [friends, setFriends] = useState<FriendRacer[]>(INITIAL_FRIENDS_AND_FAMILY);
-  const [personalBestKcal, setPersonalBestKcal] = useState<number>(680);
+  const [personalBestKcal] = useState<number>(680);
   const [authUser, setAuthUser] = useState<{ name: string; email: string } | null>(null);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
@@ -53,7 +53,7 @@ export default function ZunygalnaApp() {
 
   const plan = useMemo(() => calculateCaloriePlan(profile), [profile]);
 
-  const [historyLogs, setHistoryLogs] = useState<DailyProgressLog[]>(() =>
+  const [historyLogs] = useState<DailyProgressLog[]>(() =>
     generateInitialHeatmapHistory(550)
   );
 
@@ -126,28 +126,28 @@ export default function ZunygalnaApp() {
   const t = TRANSLATIONS[lang];
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#060a12] text-slate-100 pb-24">
-      {/* STICKY TOP HEADER */}
-      <header className="sticky top-0 z-40 backdrop-blur-xl bg-slate-950/85 border-b border-slate-800/80">
+    <div className="min-h-screen flex flex-col bg-slate-50 text-slate-900 pb-24">
+      {/* STICKY TOP HEADER (WHITE / LIGHT THEME) */}
+      <header className="sticky top-0 z-40 backdrop-blur-xl bg-white/90 border-b border-slate-200 shadow-xs">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-3">
           {/* Brand Logo */}
           <div
             onClick={() => setActiveTab('home')}
             className="flex items-center gap-3 cursor-pointer group"
           >
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-emerald-400 via-emerald-500 to-amber-500 flex items-center justify-center text-slate-950 font-black text-lg shadow-lg shadow-emerald-500/20 group-hover:scale-105 transition-transform">
+            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-emerald-400 via-emerald-500 to-amber-500 flex items-center justify-center text-white font-black text-lg shadow-md shadow-emerald-500/25 group-hover:scale-105 transition-transform">
               ☀️
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="font-black text-base sm:text-lg tracking-tight text-white">
+                <span className="font-black text-base sm:text-lg tracking-tight text-slate-900">
                   Зун яг ална
                 </span>
-                <span className="hidden sm:inline-block text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                <span className="hidden sm:inline-block text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
                   Zunygalna
                 </span>
               </div>
-              <p className="text-[11px] text-slate-400 hidden sm:block">
+              <p className="text-[11px] text-slate-500 hidden sm:block">
                 {t.appTagline}
               </p>
             </div>
@@ -158,10 +158,10 @@ export default function ZunygalnaApp() {
             <button
               type="button"
               onClick={() => setLang((l) => (l === 'mn' ? 'en' : 'mn'))}
-              className="px-3 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-xs font-bold text-slate-200 flex items-center gap-1.5 cursor-pointer"
+              className="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200/80 border border-slate-200 text-xs font-bold text-slate-700 flex items-center gap-1.5 cursor-pointer transition-colors"
               title="Toggle Mongolian / English"
             >
-              <Globe className="w-3.5 h-3.5 text-emerald-400" />
+              <Globe className="w-3.5 h-3.5 text-emerald-600" />
               <span>{lang === 'mn' ? 'MN 🇲🇳' : 'EN 🇬🇧'}</span>
             </button>
 
@@ -169,16 +169,16 @@ export default function ZunygalnaApp() {
               <button
                 type="button"
                 onClick={() => setIsAuthModalOpen(true)}
-                className="px-3.5 py-2 rounded-xl bg-emerald-500/15 border border-emerald-500/40 text-xs font-bold text-emerald-300 flex items-center gap-1.5 cursor-pointer"
+                className="px-3.5 py-2 rounded-xl bg-emerald-50 border border-emerald-300 text-xs font-bold text-emerald-800 flex items-center gap-1.5 cursor-pointer"
               >
-                <UserCheck className="w-3.5 h-3.5" />
+                <UserCheck className="w-3.5 h-3.5 text-emerald-600" />
                 <span>{authUser.name}</span>
               </button>
             ) : (
               <button
                 type="button"
                 onClick={() => setIsAuthModalOpen(true)}
-                className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-amber-500 text-slate-950 font-extrabold text-xs shadow-md hover:brightness-110 flex items-center gap-1.5 cursor-pointer"
+                className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-amber-500 text-white font-extrabold text-xs shadow-sm shadow-emerald-500/20 hover:brightness-105 flex items-center gap-1.5 cursor-pointer"
               >
                 <LogIn className="w-3.5 h-3.5" />
                 <span>{t.loginBtn}</span>
@@ -213,10 +213,7 @@ export default function ZunygalnaApp() {
             friends={friends}
             personalBestKcal={personalBestKcal}
             onUpdateTodayLog={(updater) => {
-              setTodayLog((prev) => {
-                const next = updater(prev);
-                return next;
-              });
+              setTodayLog((prev) => updater(prev));
             }}
             onAddFriend={handleAddFriend}
           />
@@ -234,16 +231,16 @@ export default function ZunygalnaApp() {
         )}
       </main>
 
-      {/* FIXED BOTTOM NAVIGATION BAR (HOME, PLAN/INTRO, LEARN, BODY/FURTHER) */}
-      <nav className="fixed bottom-0 left-0 right-0 z-40 backdrop-blur-xl bg-slate-950/90 border-t border-slate-800">
+      {/* FIXED BOTTOM NAVIGATION BAR (WHITE / LIGHT THEME) */}
+      <nav className="fixed bottom-0 left-0 right-0 z-40 backdrop-blur-xl bg-white/95 border-t border-slate-200 shadow-lg">
         <div className="max-w-xl mx-auto px-3 py-2 grid grid-cols-4 gap-2">
           <button
             type="button"
             onClick={() => setActiveTab('home')}
             className={`py-2 px-3 rounded-2xl flex flex-col items-center justify-center gap-1 transition-all cursor-pointer ${
               activeTab === 'home'
-                ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-extrabold'
-                : 'text-slate-400 hover:text-slate-200'
+                ? 'bg-emerald-50 text-emerald-700 border border-emerald-300 font-extrabold shadow-xs'
+                : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100/70'
             }`}
           >
             <Flame className="w-5 h-5" />
@@ -255,8 +252,8 @@ export default function ZunygalnaApp() {
             onClick={() => setActiveTab('intro')}
             className={`py-2 px-3 rounded-2xl flex flex-col items-center justify-center gap-1 transition-all cursor-pointer ${
               activeTab === 'intro'
-                ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-extrabold'
-                : 'text-slate-400 hover:text-slate-200'
+                ? 'bg-emerald-50 text-emerald-700 border border-emerald-300 font-extrabold shadow-xs'
+                : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100/70'
             }`}
           >
             <Sliders className="w-5 h-5" />
@@ -268,8 +265,8 @@ export default function ZunygalnaApp() {
             onClick={() => setActiveTab('learn')}
             className={`py-2 px-3 rounded-2xl flex flex-col items-center justify-center gap-1 transition-all cursor-pointer ${
               activeTab === 'learn'
-                ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-extrabold'
-                : 'text-slate-400 hover:text-slate-200'
+                ? 'bg-emerald-50 text-emerald-700 border border-emerald-300 font-extrabold shadow-xs'
+                : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100/70'
             }`}
           >
             <BookOpen className="w-5 h-5" />
@@ -281,8 +278,8 @@ export default function ZunygalnaApp() {
             onClick={() => setActiveTab('body')}
             className={`py-2 px-3 rounded-2xl flex flex-col items-center justify-center gap-1 transition-all cursor-pointer ${
               activeTab === 'body'
-                ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-extrabold'
-                : 'text-slate-400 hover:text-slate-200'
+                ? 'bg-emerald-50 text-emerald-700 border border-emerald-300 font-extrabold shadow-xs'
+                : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100/70'
             }`}
           >
             <Activity className="w-5 h-5" />

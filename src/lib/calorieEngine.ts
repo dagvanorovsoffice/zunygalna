@@ -166,7 +166,7 @@ export function calculateAsianBmi(heightCm: number, weightKg: number): AsianBmiR
       labelEn: 'Underweight (<18.5 Asian WPRO)',
       healthyMinKg,
       healthyMaxKg,
-      colorClass: 'text-sky-400',
+      colorClass: 'text-sky-700 bg-sky-50 border border-sky-200',
     };
   }
   if (bmi < 23.0) {
@@ -177,7 +177,7 @@ export function calculateAsianBmi(heightCm: number, weightKg: number): AsianBmiR
       labelEn: 'Normal Weight (Asian WPRO 18.5–22.9)',
       healthyMinKg,
       healthyMaxKg,
-      colorClass: 'text-emerald-400',
+      colorClass: 'text-emerald-700 bg-emerald-50 border border-emerald-200',
     };
   }
   if (bmi < 25.0) {
@@ -188,7 +188,7 @@ export function calculateAsianBmi(heightCm: number, weightKg: number): AsianBmiR
       labelEn: 'Overweight / At-Risk (Asian WPRO 23.0–24.9)',
       healthyMinKg,
       healthyMaxKg,
-      colorClass: 'text-amber-400',
+      colorClass: 'text-amber-700 bg-amber-50 border border-amber-200',
     };
   }
   if (bmi < 30.0) {
@@ -199,7 +199,7 @@ export function calculateAsianBmi(heightCm: number, weightKg: number): AsianBmiR
       labelEn: 'Obese Class I (Asian WPRO ≥25.0)',
       healthyMinKg,
       healthyMaxKg,
-      colorClass: 'text-orange-400',
+      colorClass: 'text-orange-700 bg-orange-50 border border-orange-200',
     };
   }
   return {
@@ -209,7 +209,7 @@ export function calculateAsianBmi(heightCm: number, weightKg: number): AsianBmiR
     labelEn: 'Obese Class II (≥30.0)',
     healthyMinKg,
     healthyMaxKg,
-    colorClass: 'text-rose-400',
+    colorClass: 'text-rose-700 bg-rose-50 border border-rose-200',
   };
 }
 

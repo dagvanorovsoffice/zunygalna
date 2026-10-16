@@ -76,8 +76,6 @@ export default function IntroOnboarding({
   };
 
   // Linked Slider 1: Movement Burn (Prioritized first!)
-  // When user moves Movement Burn, Diet Cut automatically adjusts so Movement + Diet = Tier Total Deficit
-  // (or if Movement exceeds Tier Total, Diet Cut becomes 0 and total deficit increases!)
   const handleMovementSliderChange = (newMovementKcal: number) => {
     const tierTotal = DEFICIT_TIERS[profile.deficitTier].totalDeficitKcal;
     const linkedDietCut = Math.max(0, tierTotal - newMovementKcal);
@@ -89,7 +87,6 @@ export default function IntroOnboarding({
   };
 
   // Linked Slider 2: Food Calorie Cut
-  // When user moves Diet Cut, Movement Burn automatically adjusts so Movement + Diet = Tier Total Deficit
   const handleDietSliderChange = (newDietCutKcal: number) => {
     const tierTotal = DEFICIT_TIERS[profile.deficitTier].totalDeficitKcal;
     const maxSafeCut = Math.max(0, plan.baselineTdeeKcal - plan.safeMinFoodKcal);
@@ -185,80 +182,87 @@ export default function IntroOnboarding({
 
   return (
     <div className="space-y-8 pb-12">
-      {/* HERO BANNER */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-950/90 via-slate-900 to-amber-950/60 border border-emerald-500/30 p-6 sm:p-8 shadow-2xl">
+      {/* HERO BANNER (SUNNY WHITE / EMERALD / AMBER LIGHT THEME) */}
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-50 via-white to-amber-50 border border-emerald-200 p-6 sm:p-8 shadow-md">
         <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-          <span className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-            <Sparkles className="w-3.5 h-3.5" />
+          <span className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+            <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
             {lang === 'mn'
               ? 'Ази хүний биеийн онцлогт тохируулсан тооцоолол'
               : 'Calibrated with Asian Clinical & Metabolic Studies'}
           </span>
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
-            <Calendar className="w-3.5 h-3.5" />
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-300">
+            <Calendar className="w-3.5 h-3.5 text-amber-600" />
             {t.summerCountdownPrefix}
             {profile.targetDate}
             {t.summerCountdownSuffix}: {plan.daysUntilSummerTarget} {t.daysLeft}
           </div>
         </div>
 
-        <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight mb-2">
+        <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight mb-2">
           {t.introHeroTitle}
         </h1>
-        <p className="text-sm sm:text-base text-slate-300 max-w-3xl leading-relaxed">
+        <p className="text-sm sm:text-base text-slate-600 max-w-3xl leading-relaxed">
           {t.introHeroSubtitle}
         </p>
 
         {/* LIVE SUMMARY PILLS */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6">
-          <div className="rounded-2xl bg-slate-950/70 border border-slate-800 p-3.5">
-            <div className="text-xs text-slate-400">
+          <div className="rounded-2xl bg-white border border-slate-200 p-3.5 shadow-xs">
+            <div className="text-xs font-medium text-slate-500">
               {lang === 'mn' ? 'Одоогийн өдрийн шаталт' : 'Baseline Daily Burn'}
             </div>
-            <div className="text-xl font-bold text-white mt-0.5">
-              {plan.baselineTdeeKcal.toLocaleString()} <span className="text-xs font-normal text-slate-400">kcal</span>
+            <div className="text-xl font-extrabold text-slate-900 mt-0.5">
+              {plan.baselineTdeeKcal.toLocaleString()}{' '}
+              <span className="text-xs font-normal text-slate-500">kcal</span>
             </div>
-            <div className="text-[11px] text-slate-400 mt-1">
+            <div className="text-[11px] text-slate-500 mt-1">
               BMR {plan.bmrKcal} + {lang === 'mn' ? 'Зорчилт/Дасгал' : 'Commute/Workout'}{' '}
               {plan.commuteKcal + plan.dailyAvgExerciseKcal} kcal
             </div>
           </div>
 
-          <div className="rounded-2xl bg-emerald-950/50 border border-emerald-500/30 p-3.5">
-            <div className="text-xs text-emerald-300">
+          <div className="rounded-2xl bg-emerald-50/90 border border-emerald-300 p-3.5 shadow-xs">
+            <div className="text-xs font-semibold text-emerald-800">
               {lang === 'mn' ? 'Шинэ нийт өдрийн шаталт' : 'Target Total Daily Burn'}
             </div>
-            <div className="text-xl font-bold text-emerald-400 mt-0.5">
-              {plan.projectedTotalBurnKcal.toLocaleString()} <span className="text-xs font-normal text-emerald-300">kcal</span>
+            <div className="text-xl font-extrabold text-emerald-700 mt-0.5">
+              {plan.projectedTotalBurnKcal.toLocaleString()}{' '}
+              <span className="text-xs font-normal text-emerald-700">kcal</span>
             </div>
-            <div className="text-[11px] text-emerald-300/80 mt-1">
-              +{(plan.totalDailyTargetDistanceMeters / 1000).toFixed(1)} km ({plan.totalDailyTargetDistanceMeters.toLocaleString()} m){' '}
+            <div className="text-[11px] text-emerald-700 mt-1 font-medium">
+              +{(plan.totalDailyTargetDistanceMeters / 1000).toFixed(1)} km (
+              {plan.totalDailyTargetDistanceMeters.toLocaleString()} m){' '}
               {lang === 'mn' ? 'идэвхтэй зам' : 'active/day'}
             </div>
           </div>
 
-          <div className="rounded-2xl bg-amber-950/40 border border-amber-500/30 p-3.5">
-            <div className="text-xs text-amber-300">
+          <div className="rounded-2xl bg-amber-50/90 border border-amber-300 p-3.5 shadow-xs">
+            <div className="text-xs font-semibold text-amber-800">
               {lang === 'mn' ? 'Өдөрт идэх хоолны илчлэг' : 'Daily Food Intake Target'}
             </div>
-            <div className="text-xl font-bold text-amber-400 mt-0.5">
-              {plan.recommendedDailyFoodKcal.toLocaleString()} <span className="text-xs font-normal text-amber-300">kcal</span>
+            <div className="text-xl font-extrabold text-amber-700 mt-0.5">
+              {plan.recommendedDailyFoodKcal.toLocaleString()}{' '}
+              <span className="text-xs font-normal text-amber-700">kcal</span>
             </div>
-            <div className="text-[11px] text-amber-300/80 mt-1">
+            <div className="text-[11px] text-amber-700 mt-1 font-medium">
               {lang === 'mn'
                 ? `Аюулгүй доод хязгаар: ${plan.safeMinFoodKcal} ккал`
                 : `Safe clinical floor: ${plan.safeMinFoodKcal} kcal`}
             </div>
           </div>
 
-          <div className="rounded-2xl bg-slate-950/70 border border-slate-800 p-3.5">
-            <div className="text-xs text-slate-400">
-              {lang === 'mn' ? `${profile.targetDate} гэхэд жин` : `Weight by ${profile.targetDate}`}
+          <div className="rounded-2xl bg-white border border-slate-200 p-3.5 shadow-xs">
+            <div className="text-xs font-medium text-slate-500">
+              {lang === 'mn'
+                ? `${profile.targetDate} гэхэд жин`
+                : `Weight by ${profile.targetDate}`}
             </div>
-            <div className="text-xl font-bold text-white mt-0.5">
-              {plan.projectedWeightOnTargetDateKg} <span className="text-xs font-normal text-slate-400">kg</span>
+            <div className="text-xl font-extrabold text-slate-900 mt-0.5">
+              {plan.projectedWeightOnTargetDateKg}{' '}
+              <span className="text-xs font-normal text-slate-500">kg</span>
             </div>
-            <div className="text-[11px] text-emerald-400 mt-1">
+            <div className="text-[11px] text-emerald-600 font-semibold mt-1">
               {lang === 'mn'
                 ? `Зорилт: ${profile.targetWeightKg} кг (${plan.estimatedCompletionDate})`
                 : `Target: ${profile.targetWeightKg} kg (Est. ${plan.estimatedCompletionDate})`}
@@ -268,13 +272,15 @@ export default function IntroOnboarding({
       </div>
 
       {/* STEP 1: VISUAL BODY METRICS & TARGET WEIGHT SELECTORS */}
-      <section className="rounded-3xl bg-slate-900/90 border border-slate-800 p-6 shadow-xl space-y-6">
+      <section className="rounded-3xl bg-white border border-slate-200 p-6 shadow-sm space-y-6">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="text-lg sm:text-xl font-bold text-white flex items-center gap-2.5">
-            <Scale className="w-5 h-5 text-emerald-400" />
+          <h2 className="text-lg sm:text-xl font-bold text-slate-900 flex items-center gap-2.5">
+            <Scale className="w-5 h-5 text-emerald-600" />
             {t.step1Title}
           </h2>
-          <span className={`text-xs font-semibold px-3 py-1 rounded-full bg-slate-800 ${bmiInfo.colorClass}`}>
+          <span
+            className={`text-xs font-bold px-3.5 py-1 rounded-full ${bmiInfo.colorClass}`}
+          >
             BMI {bmiInfo.bmi} • {lang === 'mn' ? bmiInfo.labelMn : bmiInfo.labelEn}
           </span>
         </div>
@@ -282,7 +288,7 @@ export default function IntroOnboarding({
         {/* Gender + Target Date Row */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs font-medium text-slate-400 mb-2">
+            <label className="block text-xs font-semibold text-slate-600 mb-2">
               {t.genderLabel}
             </label>
             <div className="grid grid-cols-2 gap-3">
@@ -293,10 +299,10 @@ export default function IntroOnboarding({
                     key={g}
                     type="button"
                     onClick={() => onUpdateProfile((p) => ({ ...p, gender: g }))}
-                    className={`py-3 px-4 rounded-2xl font-semibold text-sm transition-all flex items-center justify-center gap-2 border ${
+                    className={`py-3 px-4 rounded-2xl font-bold text-sm transition-all flex items-center justify-center gap-2 border cursor-pointer ${
                       active
-                        ? 'bg-emerald-500/20 border-emerald-400 text-emerald-300 shadow-lg shadow-emerald-950/50'
-                        : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:border-slate-700'
+                        ? 'bg-emerald-50 border-emerald-500 text-emerald-800 shadow-xs'
+                        : 'bg-slate-50 border-slate-200 text-slate-600 hover:border-slate-300'
                     }`}
                   >
                     <span>{g === 'male' ? '👨' : '👩'}</span>
@@ -308,7 +314,7 @@ export default function IntroOnboarding({
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-slate-400 mb-2">
+            <label className="block text-xs font-semibold text-slate-600 mb-2">
               {t.targetDateLabel} (Зун яг ална — 6 сарын 15)
             </label>
             <div className="flex items-center gap-2">
@@ -321,7 +327,7 @@ export default function IntroOnboarding({
                     targetDate: e.target.value || p.targetDate,
                   }))
                 }
-                className="w-full rounded-2xl bg-slate-950/80 border border-slate-800 px-4 py-2.5 text-sm font-semibold text-white focus:outline-none focus:border-emerald-400"
+                className="w-full rounded-2xl bg-slate-50 border border-slate-200 px-4 py-2.5 text-sm font-bold text-slate-900 focus:outline-none focus:border-emerald-500"
               />
               <button
                 type="button"
@@ -331,7 +337,7 @@ export default function IntroOnboarding({
                     targetDate: '2027-06-15',
                   }))
                 }
-                className="shrink-0 px-3.5 py-2.5 rounded-2xl text-xs font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/30 hover:bg-amber-500/30"
+                className="shrink-0 px-3.5 py-2.5 rounded-2xl text-xs font-bold bg-amber-100 text-amber-800 border border-amber-300 hover:bg-amber-200 cursor-pointer"
               >
                 06-15
               </button>
@@ -342,10 +348,10 @@ export default function IntroOnboarding({
         {/* Scrubbable Sliders for Age, Height (cm), Current Weight (kg), Target Weight (kg) */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* AGE */}
-          <div className="rounded-2xl bg-slate-950/70 border border-slate-800/90 p-4">
+          <div className="rounded-2xl bg-slate-50 border border-slate-200 p-4">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-medium text-slate-400">{t.ageLabel}</span>
-              <span className="text-lg font-extrabold text-white">{profile.age}</span>
+              <span className="text-xs font-semibold text-slate-600">{t.ageLabel}</span>
+              <span className="text-lg font-extrabold text-slate-900">{profile.age}</span>
             </div>
             <input
               type="range"
@@ -355,7 +361,7 @@ export default function IntroOnboarding({
               onChange={(e) =>
                 onUpdateProfile((p) => ({ ...p, age: Number(e.target.value) }))
               }
-              className="w-full accent-emerald-400 cursor-pointer"
+              className="w-full accent-emerald-600 cursor-pointer"
             />
             <div className="flex justify-between text-[11px] text-slate-500 mt-1">
               <span>16</span>
@@ -366,10 +372,12 @@ export default function IntroOnboarding({
           </div>
 
           {/* HEIGHT (CM) */}
-          <div className="rounded-2xl bg-slate-950/70 border border-slate-800/90 p-4">
+          <div className="rounded-2xl bg-slate-50 border border-slate-200 p-4">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-medium text-slate-400">{t.heightLabel}</span>
-              <span className="text-lg font-extrabold text-white">{profile.heightCm} cm</span>
+              <span className="text-xs font-semibold text-slate-600">{t.heightLabel}</span>
+              <span className="text-lg font-extrabold text-slate-900">
+                {profile.heightCm} cm
+              </span>
             </div>
             <input
               type="range"
@@ -379,7 +387,7 @@ export default function IntroOnboarding({
               onChange={(e) =>
                 onUpdateProfile((p) => ({ ...p, heightCm: Number(e.target.value) }))
               }
-              className="w-full accent-emerald-400 cursor-pointer"
+              className="w-full accent-emerald-600 cursor-pointer"
             />
             <div className="flex justify-between text-[11px] text-slate-500 mt-1">
               <span>145 cm</span>
@@ -389,10 +397,14 @@ export default function IntroOnboarding({
           </div>
 
           {/* CURRENT WEIGHT (KG) */}
-          <div className="rounded-2xl bg-slate-950/70 border border-slate-800/90 p-4">
+          <div className="rounded-2xl bg-slate-50 border border-slate-200 p-4">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-medium text-slate-400">{t.currentWeightLabel}</span>
-              <span className="text-lg font-extrabold text-white">{profile.weightKg} kg</span>
+              <span className="text-xs font-semibold text-slate-600">
+                {t.currentWeightLabel}
+              </span>
+              <span className="text-lg font-extrabold text-slate-900">
+                {profile.weightKg} kg
+              </span>
             </div>
             <input
               type="range"
@@ -408,7 +420,7 @@ export default function IntroOnboarding({
                   targetWeightKg: Math.min(p.targetWeightKg, newW - 1),
                 }));
               }}
-              className="w-full accent-emerald-400 cursor-pointer"
+              className="w-full accent-emerald-600 cursor-pointer"
             />
             <div className="flex justify-between text-[11px] text-slate-500 mt-1">
               <span>42 kg</span>
@@ -418,10 +430,12 @@ export default function IntroOnboarding({
           </div>
 
           {/* TARGET WEIGHT (KG) */}
-          <div className="rounded-2xl bg-emerald-950/40 border border-emerald-500/30 p-4">
+          <div className="rounded-2xl bg-emerald-50/80 border border-emerald-300 p-4">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-medium text-emerald-300">{t.targetWeightLabel}</span>
-              <span className="text-lg font-extrabold text-emerald-400">
+              <span className="text-xs font-bold text-emerald-800">
+                {t.targetWeightLabel}
+              </span>
+              <span className="text-lg font-extrabold text-emerald-700">
                 {profile.targetWeightKg} kg
               </span>
             </div>
@@ -437,27 +451,27 @@ export default function IntroOnboarding({
                   targetWeightKg: Number(e.target.value),
                 }))
               }
-              className="w-full accent-emerald-400 cursor-pointer"
+              className="w-full accent-emerald-600 cursor-pointer"
             />
-            <div className="flex justify-between text-[11px] text-emerald-300/70 mt-1">
+            <div className="flex justify-between text-[11px] text-emerald-800 font-medium mt-1">
               <span>
-                {lang === 'mn' ? 'Ази хэвийн жин:' : 'Asian ideal:'} {bmiInfo.healthyMinKg}–
-                {bmiInfo.healthyMaxKg} kg
+                {lang === 'mn' ? 'Ази хэвийн жин:' : 'Asian ideal:'}{' '}
+                {bmiInfo.healthyMinKg}–{bmiInfo.healthyMaxKg} kg
               </span>
-              <span>-{plan.kgToLose} kg</span>
+              <span className="font-bold">-{plan.kgToLose} kg</span>
             </div>
           </div>
         </div>
       </section>
 
       {/* STEP 2: WORK-HOME TRAVEL (COMMUTE) & EXERCISE SELECTION TOOLS */}
-      <section className="rounded-3xl bg-slate-900/90 border border-slate-800 p-6 shadow-xl space-y-6">
+      <section className="rounded-3xl bg-white border border-slate-200 p-6 shadow-sm space-y-6">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="text-lg sm:text-xl font-bold text-white flex items-center gap-2.5">
-            <Footprints className="w-5 h-5 text-emerald-400" />
+          <h2 className="text-lg sm:text-xl font-bold text-slate-900 flex items-center gap-2.5">
+            <Footprints className="w-5 h-5 text-emerald-600" />
             {t.step2Title}
           </h2>
-          <span className="text-xs font-semibold px-3 py-1 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
+          <span className="text-xs font-bold px-3.5 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200">
             {lang === 'mn'
               ? `Зорчилт: +${plan.commuteKcal} ккал (${plan.commuteActiveMeters} м/өдөр) • Дасгал: +${plan.dailyAvgExerciseKcal} ккал/өдөр`
               : `Commute: +${plan.commuteKcal} kcal (${plan.commuteActiveMeters} m/day) • Workout avg: +${plan.dailyAvgExerciseKcal} kcal/day`}
@@ -466,7 +480,7 @@ export default function IntroOnboarding({
 
         {/* Commute Method Tap Cards */}
         <div>
-          <label className="block text-xs font-medium text-slate-400 mb-2.5">
+          <label className="block text-xs font-semibold text-slate-600 mb-2.5">
             {t.commuteMethodLabel}
           </label>
           <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
@@ -479,17 +493,17 @@ export default function IntroOnboarding({
                   onClick={() =>
                     onUpdateProfile((p) => ({ ...p, commuteMethod: opt.id }))
                   }
-                  className={`p-3.5 rounded-2xl border text-left transition-all flex flex-col justify-between gap-2 ${
+                  className={`p-3.5 rounded-2xl border text-left transition-all flex flex-col justify-between gap-2 cursor-pointer ${
                     active
-                      ? 'bg-emerald-500/20 border-emerald-400 text-emerald-300 shadow-lg shadow-emerald-950/40'
-                      : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:border-slate-700'
+                      ? 'bg-emerald-50 border-emerald-500 text-emerald-700 shadow-xs'
+                      : 'bg-slate-50 border-slate-200 text-slate-600 hover:border-slate-300'
                   }`}
                 >
                   <div className="flex items-center justify-between">
                     {opt.icon}
-                    {active && <CheckCircle2 className="w-4 h-4 text-emerald-400" />}
+                    {active && <CheckCircle2 className="w-4 h-4 text-emerald-600" />}
                   </div>
-                  <div className="text-xs font-bold text-white">
+                  <div className="text-xs font-bold text-slate-900">
                     {lang === 'mn' ? opt.labelMn : opt.labelEn}
                   </div>
                 </button>
@@ -500,9 +514,9 @@ export default function IntroOnboarding({
 
         {/* Commute Distance Chips (Metric km) */}
         {profile.commuteMethod !== 'wfh' && (
-          <div className="flex flex-wrap items-center justify-between gap-4 pt-2 border-t border-slate-800/80">
+          <div className="flex flex-wrap items-center justify-between gap-4 pt-3 border-t border-slate-100">
             <div>
-              <span className="block text-xs font-medium text-slate-400 mb-2">
+              <span className="block text-xs font-semibold text-slate-600 mb-2">
                 {t.commuteDistanceLabel}
               </span>
               <div className="flex flex-wrap gap-2">
@@ -515,10 +529,10 @@ export default function IntroOnboarding({
                       onClick={() =>
                         onUpdateProfile((p) => ({ ...p, commuteDistanceKm: km }))
                       }
-                      className={`px-3.5 py-2 rounded-xl text-xs font-bold border transition-all ${
+                      className={`px-3.5 py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
                         active
-                          ? 'bg-emerald-500 text-slate-950 border-emerald-400'
-                          : 'bg-slate-950 border-slate-800 text-slate-300 hover:border-slate-700'
+                          ? 'bg-emerald-500 text-white border-emerald-600 shadow-xs'
+                          : 'bg-slate-50 border-slate-200 text-slate-700 hover:border-slate-300'
                       }`}
                     >
                       {km} km ({km * 1000} m)
@@ -528,7 +542,7 @@ export default function IntroOnboarding({
               </div>
             </div>
 
-            <label className="inline-flex items-center gap-2.5 cursor-pointer select-none bg-slate-950/80 border border-slate-800 px-4 py-2.5 rounded-2xl">
+            <label className="inline-flex items-center gap-2.5 cursor-pointer select-none bg-slate-50 border border-slate-200 px-4 py-2.5 rounded-2xl">
               <input
                 type="checkbox"
                 checked={profile.commuteRoundTrip}
@@ -538,9 +552,9 @@ export default function IntroOnboarding({
                     commuteRoundTrip: e.target.checked,
                   }))
                 }
-                className="w-4 h-4 accent-emerald-400 rounded"
+                className="w-4 h-4 accent-emerald-600 rounded"
               />
-              <span className="text-xs font-semibold text-slate-200">
+              <span className="text-xs font-bold text-slate-800">
                 {t.roundTripLabel} (×2 ={' '}
                 {(
                   profile.commuteDistanceKm * (profile.commuteRoundTrip ? 2 : 1)
@@ -552,10 +566,10 @@ export default function IntroOnboarding({
         )}
 
         {/* Exercise Frequency & Intensity Selection */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-3 border-t border-slate-800/80">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-3 border-t border-slate-100">
           <div>
-            <label className="block text-xs font-medium text-slate-400 mb-2">
-              <Dumbbell className="w-3.5 h-3.5 inline mr-1.5 text-emerald-400" />
+            <label className="block text-xs font-semibold text-slate-600 mb-2">
+              <Dumbbell className="w-3.5 h-3.5 inline mr-1.5 text-emerald-600" />
               {t.exerciseFreqLabel}
             </label>
             <div className="grid grid-cols-4 gap-2">
@@ -571,10 +585,10 @@ export default function IntroOnboarding({
                         exerciseDaysPerWeek: item.days,
                       }))
                     }
-                    className={`py-2.5 px-2 rounded-xl text-xs font-bold border transition-all ${
+                    className={`py-2.5 px-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
                       active
-                        ? 'bg-emerald-500/20 border-emerald-400 text-emerald-300'
-                        : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700'
+                        ? 'bg-emerald-50 border-emerald-500 text-emerald-800 shadow-xs'
+                        : 'bg-slate-50 border-slate-200 text-slate-600 hover:border-slate-300'
                     }`}
                   >
                     {lang === 'mn' ? item.labelMn : item.labelEn}
@@ -585,7 +599,7 @@ export default function IntroOnboarding({
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-slate-400 mb-2">
+            <label className="block text-xs font-semibold text-slate-600 mb-2">
               {t.exerciseIntensityLabel}
             </label>
             <div className="grid grid-cols-3 gap-2">
@@ -601,16 +615,16 @@ export default function IntroOnboarding({
                         exerciseIntensity: item.id,
                       }))
                     }
-                    className={`p-2.5 rounded-xl border text-left transition-all ${
+                    className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
                       active
-                        ? 'bg-emerald-500/20 border-emerald-400 text-emerald-300'
-                        : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700'
+                        ? 'bg-emerald-50 border-emerald-500 text-emerald-800 shadow-xs'
+                        : 'bg-slate-50 border-slate-200 text-slate-600 hover:border-slate-300'
                     }`}
                   >
-                    <div className="text-xs font-bold text-white">
+                    <div className="text-xs font-bold text-slate-900">
                       {lang === 'mn' ? item.labelMn : item.labelEn}
                     </div>
-                    <div className="text-[10px] text-slate-400 truncate mt-0.5">
+                    <div className="text-[10px] text-slate-500 truncate mt-0.5">
                       {lang === 'mn' ? item.descMn : item.descEn}
                     </div>
                   </button>
@@ -622,14 +636,14 @@ export default function IntroOnboarding({
       </section>
 
       {/* STEP 3: 3 DEFICIT OPTIONS (LIGHT, MEDIUM, HEAVY) + 2 LINKED HORIZONTAL SLIDERS */}
-      <section className="rounded-3xl bg-slate-900/90 border border-slate-800 p-6 shadow-xl space-y-6">
+      <section className="rounded-3xl bg-white border border-slate-200 p-6 shadow-sm space-y-6">
         <div>
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 mb-2">
-            <Sliders className="w-3.5 h-3.5" />
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-300 mb-2">
+            <Sliders className="w-3.5 h-3.5 text-amber-600" />
             {t.twoSidesBadge}
           </span>
-          <h2 className="text-lg sm:text-xl font-bold text-white">{t.step3Title}</h2>
-          <p className="text-xs sm:text-sm text-slate-400 mt-1">{t.twoSidesDesc}</p>
+          <h2 className="text-lg sm:text-xl font-bold text-slate-900">{t.step3Title}</h2>
+          <p className="text-xs sm:text-sm text-slate-600 mt-1">{t.twoSidesDesc}</p>
         </div>
 
         {/* 3 Deficit Tier Cards */}
@@ -644,54 +658,56 @@ export default function IntroOnboarding({
                 key={tier}
                 type="button"
                 onClick={() => handleSelectTier(tier)}
-                className={`p-5 rounded-2xl border text-left transition-all flex flex-col justify-between ${
+                className={`p-5 rounded-2xl border text-left transition-all flex flex-col justify-between cursor-pointer ${
                   active
-                    ? 'bg-gradient-to-b from-emerald-950/80 to-slate-950 border-emerald-400 ring-2 ring-emerald-400/30 shadow-xl'
-                    : 'bg-slate-950/60 border-slate-800 hover:border-slate-700'
+                    ? 'bg-gradient-to-b from-emerald-50/90 to-white border-emerald-500 ring-2 ring-emerald-500/20 shadow-md'
+                    : 'bg-slate-50/70 border-slate-200 hover:border-slate-300'
                 }`}
               >
                 <div>
                   <div className="flex items-center justify-between gap-2 mb-2">
-                    <span className="text-sm font-extrabold text-white">
+                    <span className="text-sm font-extrabold text-slate-900">
                       {lang === 'mn' ? info.labelMn : info.labelEn}
                     </span>
                     <span
                       className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${
                         active
-                          ? 'bg-emerald-400 text-slate-950'
-                          : 'bg-slate-800 text-slate-300'
+                          ? 'bg-emerald-500 text-white'
+                          : 'bg-slate-200 text-slate-700'
                       }`}
                     >
                       -{info.totalDeficitKcal} kcal/{lang === 'mn' ? 'өдөр' : 'day'}
                     </span>
                   </div>
-                  <p className="text-xs text-slate-300 leading-relaxed mb-3">
+                  <p className="text-xs text-slate-600 leading-relaxed mb-3">
                     {lang === 'mn' ? info.descMn : info.descEn}
                   </p>
                 </div>
 
-                <div className="space-y-2 pt-3 border-t border-slate-800/80 text-xs">
-                  <div className="flex justify-between text-slate-300">
+                <div className="space-y-2 pt-3 border-t border-slate-200/80 text-xs">
+                  <div className="flex justify-between text-slate-600">
                     <span>{lang === 'mn' ? '7 хоногт:' : 'Weekly pace:'}</span>
-                    <span className="font-bold text-emerald-400">~{info.weeklyLossKg} kg</span>
+                    <span className="font-bold text-emerald-700">
+                      ~{info.weeklyLossKg} kg
+                    </span>
                   </div>
-                  <div className="flex justify-between text-slate-300">
+                  <div className="flex justify-between text-slate-600">
                     <span>
                       {lang === 'mn'
                         ? `${profile.targetDate} гэхэд:`
                         : `By ${profile.targetDate}:`}
                     </span>
-                    <span className="font-bold text-white">
+                    <span className="font-extrabold text-slate-900">
                       {proj.projectedWeightBySummerKg} kg
                     </span>
                   </div>
-                  <div className="flex justify-between text-slate-400 text-[11px]">
+                  <div className="flex justify-between text-slate-500 text-[11px]">
                     <span>
                       {lang === 'mn'
                         ? `${profile.targetWeightKg} кг-д хүрэх:`
                         : `Reaches ${profile.targetWeightKg} kg:`}
                     </span>
-                    <span className="font-semibold text-amber-300">
+                    <span className="font-bold text-amber-700">
                       {proj.estimatedGoalDate}
                     </span>
                   </div>
@@ -702,9 +718,9 @@ export default function IntroOnboarding({
         </div>
 
         {/* Asian Clinical Research Note for Selected Tier */}
-        <div className="rounded-2xl bg-slate-950/90 border border-slate-800 p-4 flex items-start gap-3">
-          <Info className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
-          <p className="text-xs text-slate-300 leading-relaxed">
+        <div className="rounded-2xl bg-emerald-50/70 border border-emerald-200 p-4 flex items-start gap-3">
+          <Info className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+          <p className="text-xs text-slate-700 leading-relaxed font-medium">
             {lang === 'mn'
               ? DEFICIT_TIERS[profile.deficitTier].studyNoteMn
               : DEFICIT_TIERS[profile.deficitTier].studyNoteEn}
@@ -712,14 +728,14 @@ export default function IntroOnboarding({
         </div>
 
         {/* THE TWO LINKED HORIZONTAL SLIDERS */}
-        <div className="rounded-3xl bg-gradient-to-r from-emerald-950/60 via-slate-950 to-amber-950/50 border border-emerald-500/40 p-5 sm:p-6 space-y-6">
+        <div className="rounded-3xl bg-gradient-to-r from-emerald-50 via-white to-amber-50 border border-emerald-300 p-5 sm:p-6 space-y-6 shadow-xs">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="text-sm font-bold text-white">
+            <div className="text-sm font-bold text-slate-900">
               {lang === 'mn'
                 ? 'Өдрийн цэвэр алдагдлыг Хөдөлгөөн ба Хоолонд хуваарилах (Хоорондоо уялдаатай 2 гулсуур)'
                 : 'Balance Your Daily Deficit: Movement Burn 1st ↔ Food Calorie Cut 2nd'}
             </div>
-            <div className="text-xs font-extrabold px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+            <div className="text-xs font-extrabold px-3 py-1 rounded-full bg-emerald-500 text-white shadow-xs">
               {lang === 'mn' ? 'Нийт цэвэр алдагдал:' : 'Total Net Deficit:'} -
               {plan.totalDailyNetDeficitKcal} kcal/{lang === 'mn' ? 'өдөр' : 'day'}
             </div>
@@ -727,13 +743,13 @@ export default function IntroOnboarding({
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* SLIDER 1: MOVEMENT BURN (FIRST!) */}
-            <div className="rounded-2xl bg-slate-950/85 border border-emerald-500/40 p-4 space-y-3">
+            <div className="rounded-2xl bg-white border border-emerald-300 p-4 space-y-3 shadow-xs">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-emerald-300 flex items-center gap-1.5">
-                  <Flame className="w-4 h-4 text-emerald-400" />
+                <span className="text-xs font-bold text-emerald-800 flex items-center gap-1.5">
+                  <Flame className="w-4 h-4 text-emerald-600" />
                   {t.sliderMovementLabel}
                 </span>
-                <span className="text-base font-extrabold text-emerald-400">
+                <span className="text-base font-extrabold text-emerald-600">
                   +{profile.movementAddKcal} kcal
                 </span>
               </div>
@@ -745,16 +761,16 @@ export default function IntroOnboarding({
                 step={10}
                 value={profile.movementAddKcal}
                 onChange={(e) => handleMovementSliderChange(Number(e.target.value))}
-                className="w-full accent-emerald-400 cursor-pointer h-2.5 rounded-lg"
+                className="w-full accent-emerald-600 cursor-pointer h-2.5 rounded-lg"
               />
 
-              <div className="flex items-center justify-between text-xs text-slate-300 pt-1">
+              <div className="flex items-center justify-between text-xs text-slate-600 pt-1">
                 <span>
                   ≈ +{(movementEquivalentMeters / 1000).toFixed(1)} km (
                   {movementEquivalentMeters.toLocaleString()} m){' '}
                   {lang === 'mn' ? 'алхалт эсвэл дасгал' : 'walk or workout'}
                 </span>
-                <span className="text-emerald-400 font-semibold">
+                <span className="text-emerald-700 font-bold">
                   {Math.round(
                     (profile.movementAddKcal /
                       Math.max(1, plan.totalDailyNetDeficitKcal)) *
@@ -766,13 +782,13 @@ export default function IntroOnboarding({
             </div>
 
             {/* SLIDER 2: FOOD CALORIE CUT (LINKED!) */}
-            <div className="rounded-2xl bg-slate-950/85 border border-amber-500/40 p-4 space-y-3">
+            <div className="rounded-2xl bg-white border border-amber-300 p-4 space-y-3 shadow-xs">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-amber-300 flex items-center gap-1.5">
-                  <Utensils className="w-4 h-4 text-amber-400" />
+                <span className="text-xs font-bold text-amber-800 flex items-center gap-1.5">
+                  <Utensils className="w-4 h-4 text-amber-600" />
                   {t.sliderDietLabel}
                 </span>
-                <span className="text-base font-extrabold text-amber-400">
+                <span className="text-base font-extrabold text-amber-600">
                   -{profile.dietCutKcal} kcal
                 </span>
               </div>
@@ -784,17 +800,17 @@ export default function IntroOnboarding({
                 step={10}
                 value={profile.dietCutKcal}
                 onChange={(e) => handleDietSliderChange(Number(e.target.value))}
-                className="w-full accent-amber-400 cursor-pointer h-2.5 rounded-lg"
+                className="w-full accent-amber-500 cursor-pointer h-2.5 rounded-lg"
               />
 
-              <div className="flex items-center justify-between text-xs text-slate-300 pt-1">
+              <div className="flex items-center justify-between text-xs text-slate-600 pt-1">
                 <span>
                   {lang === 'mn' ? 'Өдөрт идэх хэмжээ:' : 'You get to eat:'}{' '}
-                  <strong className="text-white">
+                  <strong className="text-slate-900">
                     {plan.recommendedDailyFoodKcal.toLocaleString()} kcal
                   </strong>
                 </span>
-                <span className="text-amber-300 font-semibold">
+                <span className="text-amber-700 font-bold">
                   {Math.round(
                     (profile.dietCutKcal /
                       Math.max(1, plan.totalDailyNetDeficitKcal)) *
@@ -809,16 +825,16 @@ export default function IntroOnboarding({
       </section>
 
       {/* STEP 4: SAMPLE BREAKFAST, LUNCH, DINNER WITH DYNAMIC METRIC GRAM PORTIONS */}
-      <section className="rounded-3xl bg-slate-900/90 border border-slate-800 p-6 shadow-xl space-y-6">
+      <section className="rounded-3xl bg-white border border-slate-200 p-6 shadow-sm space-y-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2 className="text-lg sm:text-xl font-bold text-white flex items-center gap-2.5">
-              <Utensils className="w-5 h-5 text-amber-400" />
+            <h2 className="text-lg sm:text-xl font-bold text-slate-900 flex items-center gap-2.5">
+              <Utensils className="w-5 h-5 text-amber-500" />
               {t.step4Title}
             </h2>
-            <p className="text-xs sm:text-sm text-slate-400 mt-1">{t.step4Subtitle}</p>
+            <p className="text-xs sm:text-sm text-slate-600 mt-1">{t.step4Subtitle}</p>
           </div>
-          <div className="px-4 py-2 rounded-2xl bg-amber-500/15 border border-amber-500/30 text-xs font-bold text-amber-300">
+          <div className="px-4 py-2 rounded-2xl bg-amber-50 border border-amber-300 text-xs font-bold text-amber-800">
             {lang === 'mn' ? 'Өдрийн нийт хоол:' : 'Daily Food Target:'}{' '}
             {plan.recommendedDailyFoodKcal.toLocaleString()} kcal (100% Metric: g, ml)
           </div>
@@ -845,16 +861,16 @@ export default function IntroOnboarding({
             return (
               <div
                 key={cat}
-                className="rounded-2xl bg-slate-950/90 border border-slate-800 overflow-hidden flex flex-col justify-between shadow-lg"
+                className="rounded-2xl bg-white border border-slate-200 overflow-hidden flex flex-col justify-between shadow-sm"
               >
                 <div>
                   {/* Category Header + Option Switcher */}
-                  <div className="p-4 border-b border-slate-800/80 flex items-center justify-between">
+                  <div className="p-4 border-b border-slate-100 bg-slate-50/60 flex items-center justify-between">
                     <div>
-                      <span className="text-xs uppercase tracking-wider font-extrabold text-emerald-400">
+                      <span className="text-xs uppercase tracking-wider font-extrabold text-emerald-600">
                         {catTitle}
                       </span>
-                      <div className="text-lg font-extrabold text-white">
+                      <div className="text-lg font-extrabold text-slate-900">
                         {scaled.targetMealKcal} kcal
                       </div>
                     </div>
@@ -866,10 +882,10 @@ export default function IntroOnboarding({
                           onClick={() =>
                             setSelectedMealIdx((prev) => ({ ...prev, [cat]: idx }))
                           }
-                          className={`w-7 h-7 rounded-lg text-xs font-bold transition-all ${
+                          className={`w-7 h-7 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                             idx === activeIdx
-                              ? 'bg-emerald-500 text-slate-950'
-                              : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
+                              ? 'bg-emerald-500 text-white shadow-xs'
+                              : 'bg-slate-200/80 text-slate-600 hover:bg-slate-300'
                           }`}
                         >
                           #{idx + 1}
@@ -879,16 +895,16 @@ export default function IntroOnboarding({
                   </div>
 
                   {/* Sample Meal Picture */}
-                  <div className="relative h-44 w-full overflow-hidden bg-slate-900">
+                  <div className="relative h-44 w-full overflow-hidden bg-slate-100">
                     <img
                       src={currentMeal.imageUrl}
                       alt={lang === 'mn' ? currentMeal.titleMn : currentMeal.titleEn}
                       className="w-full h-full object-cover transition-transform duration-500 hover:scale-105"
                     />
-                    <div className="absolute top-3 left-3 px-2.5 py-1 rounded-full text-[11px] font-bold bg-slate-950/85 text-emerald-300 border border-emerald-500/30 backdrop-blur-sm">
+                    <div className="absolute top-3 left-3 px-2.5 py-1 rounded-full text-[11px] font-bold bg-white/95 text-emerald-700 border border-emerald-200 shadow-xs">
                       {lang === 'mn' ? currentMeal.tagMn : currentMeal.tagEn}
                     </div>
-                    <div className="absolute bottom-2 right-2 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-slate-950/85 text-amber-300">
+                    <div className="absolute bottom-2 right-2 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-white/95 text-amber-700 border border-amber-200 shadow-xs">
                       P: {scaled.totalProteinG}g • C: {scaled.totalCarbsG}g • F:{' '}
                       {scaled.totalFatG}g
                     </div>
@@ -897,17 +913,17 @@ export default function IntroOnboarding({
                   {/* Meal Title & Metric Gram Breakdown Under the Picture */}
                   <div className="p-4 space-y-3">
                     <div>
-                      <h3 className="text-sm font-bold text-white leading-snug">
+                      <h3 className="text-sm font-bold text-slate-900 leading-snug">
                         {lang === 'mn' ? currentMeal.titleMn : currentMeal.titleEn}
                       </h3>
-                      <p className="text-[11px] text-slate-400 mt-0.5">
+                      <p className="text-[11px] text-slate-500 mt-0.5">
                         {lang === 'mn' ? currentMeal.subtitleMn : currentMeal.subtitleEn}
                       </p>
                     </div>
 
                     {/* Exact Gram Details Under Pic */}
-                    <div className="rounded-xl bg-slate-900/90 border border-slate-800/90 p-3 space-y-2">
-                      <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400 flex items-center justify-between">
+                    <div className="rounded-xl bg-slate-50 border border-slate-200/90 p-3 space-y-2">
+                      <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500 flex items-center justify-between">
                         <span>
                           {lang === 'mn'
                             ? 'Орц ба хэмжээ (Грамм / мл)'
@@ -918,16 +934,16 @@ export default function IntroOnboarding({
                       {scaled.scaledIngredients.map((ing, i) => (
                         <div
                           key={i}
-                          className="flex items-center justify-between text-xs py-1 border-b border-slate-800/60 last:border-none"
+                          className="flex items-center justify-between text-xs py-1 border-b border-slate-200/70 last:border-none"
                         >
-                          <div className="text-slate-200 pr-2">
-                            <span className="font-extrabold text-emerald-400">
+                          <div className="text-slate-700 pr-2">
+                            <span className="font-extrabold text-emerald-600">
                               {ing.grams}
                               {ing.unit}
                             </span>{' '}
                             {lang === 'mn' ? ing.nameMn : ing.nameEn}
                           </div>
-                          <span className="text-slate-400 font-semibold shrink-0">
+                          <span className="text-slate-500 font-semibold shrink-0">
                             {ing.kcal} kcal
                           </span>
                         </div>
@@ -945,7 +961,7 @@ export default function IntroOnboarding({
           <button
             type="button"
             onClick={onGoToHomeJourney}
-            className="w-full sm:w-auto px-8 py-4 rounded-2xl font-extrabold text-base bg-gradient-to-r from-emerald-500 to-amber-500 text-slate-950 shadow-xl shadow-emerald-950/50 hover:brightness-110 transition-all flex items-center justify-center gap-2 cursor-pointer"
+            className="w-full sm:w-auto px-8 py-4 rounded-2xl font-extrabold text-base bg-gradient-to-r from-emerald-500 to-amber-500 text-white shadow-lg shadow-emerald-500/25 hover:brightness-105 transition-all flex items-center justify-center gap-2 cursor-pointer"
           >
             <span>{t.startJourneyCta}</span>
             <ArrowRight className="w-5 h-5" />
