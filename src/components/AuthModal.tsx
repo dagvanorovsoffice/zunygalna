@@ -2,7 +2,13 @@
 
 import React, { useState } from 'react';
 import { Language } from '@/lib/i18n';
-import { isSupabaseConfigured, supabase } from '@/lib/supabase';
+import { auth, db, isFirebaseEnabled } from '@/lib/firebase';
+import {
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  updateProfile,
+} from 'firebase/auth';
+import { doc, setDoc } from 'firebase/firestore';
 import { UserCheck, Mail, Lock, User, Sparkles, X } from 'lucide-react';
 
 interface AuthModalProps {
@@ -35,20 +41,23 @@ export default function AuthModal({
     setStatusMessage(null);
 
     try {
-      if (isSupabaseConfigured && supabase) {
+      if (isFirebaseEnabled && auth) {
         if (mode === 'register') {
-          const { error } = await supabase.auth.signUp({
-            email,
-            password,
-            options: { data: { display_name: name } },
-          });
-          if (error) throw error;
+          const cred = await createUserWithEmailAndPassword(auth, email, password);
+          await updateProfile(cred.user, { displayName: name });
+          if (db) {
+            await setDoc(
+              doc(db, 'profiles', cred.user.uid),
+              {
+                displayName: name,
+                email,
+                updatedAt: new Date().toISOString(),
+              },
+              { merge: true }
+            );
+          }
         } else {
-          const { error } = await supabase.auth.signInWithPassword({
-            email,
-            password,
-          });
-          if (error) throw error;
+          await signInWithEmailAndPassword(auth, email, password);
         }
       }
 
