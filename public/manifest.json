@@ -1,0 +1,18 @@
+{
+  "name": "Зун яг ална — Zunygalna",
+  "short_name": "ЗунЯгАлна",
+  "description": "Жижиг үйлдлээр зуны өмнө том өөрчлөлт — See the effects of small daily actions on your lifestyle before June 15th.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#090d16",
+  "theme_color": "#10b981",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
