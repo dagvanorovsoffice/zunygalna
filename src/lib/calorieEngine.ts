@@ -56,84 +56,154 @@ export interface FriendRacer {
   lastActiveTextEn: string;
 }
 
-export function getNextJune15(referenceDate: Date = new Date()): string {
+export function getNextJune15(referenceDate: Date = new Date('2026-10-19T00:00:00')): string {
   const year = referenceDate.getFullYear();
-  const june15ThisYear = new Date(year, 5, 15); // Month is 0-indexed (5 = June)
-  // If we are already past June 1st of this year, target next year's June 15th
   if (referenceDate >= new Date(year, 5, 1)) {
     return `${year + 1}-06-15`;
   }
   return `${year}-06-15`;
 }
 
-export const DEFAULT_USER_PROFILE: UserProfile = {
+export function getDaysUntilDate(
+  targetDateStr: string,
+  referenceDate: Date = new Date()
+): number {
+  const targetDateObj = new Date(targetDateStr + 'T00:00:00');
+  const refStart = new Date(
+    referenceDate.getFullYear(),
+    referenceDate.getMonth(),
+    referenceDate.getDate()
+  );
+  const diffMs = targetDateObj.getTime() - refStart.getTime();
+  return Math.max(14, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
+}
+
+export interface TierDefinition {
+  totalDeficitKcal: number;
+  defaultMovementSplitPct: number;
+  weeklyLossKg: number;
+  labelMn: string;
+  labelEn: string;
+  descMn: string;
+  descEn: string;
+  studyNoteMn: string;
+  studyNoteEn: string;
+}
+
+/**
+ * Dynamically computes the 3 Deficit Tiers (Light, Medium, Heavy) anchored to the user's
+ * Target Weight and Summer Target Date (June 15th), while respecting Asian clinical guidelines.
+ * - Medium: Exact daily calorie deficit required to reach `targetWeightKg` on `targetDate` (clamped to safe bounds).
+ * - Light: 75% of the Medium deficit (gentle lifestyle pace, prioritizing movement).
+ * - Heavy: 130% of the Medium deficit (intensive push — reaches `targetWeightKg` ahead of schedule or loses extra fat by June 15th).
+ */
+export function getDynamicDeficitTiers(
+  weightKg: number,
+  targetWeightKg: number,
+  targetDate: string,
+  referenceDate: Date = new Date()
+): Record<DeficitTier, TierDefinition> {
+  const days = getDaysUntilDate(targetDate, referenceDate);
+  const kgToLose = Math.max(0.5, Number((weightKg - targetWeightKg).toFixed(1)));
+  const exactRequiredDeficit = Math.round((kgToLose * 7700) / days);
+
+  // Clamp medium to safe clinical range (150 to 850 kcal/day)
+  const mediumDeficit = Math.min(850, Math.max(150, exactRequiredDeficit));
+  const lightDeficit = Math.max(120, Math.round(mediumDeficit * 0.75));
+  const heavyDeficit = Math.min(
+    1000,
+    Math.max(mediumDeficit + 120, Math.round(mediumDeficit * 1.3))
+  );
+
+  return {
+    light: {
+      totalDeficitKcal: lightDeficit,
+      defaultMovementSplitPct: 0.65,
+      weeklyLossKg: Number(((lightDeficit * 7) / 7700).toFixed(2)),
+      labelMn: 'Хөнгөн (Light)',
+      labelEn: 'Light Pace',
+      descMn: 'Өлсөхгүйгээр алхалт болон хөдөлгөөнөө нэмж аажмаар галбиржих',
+      descEn: 'Gentle pace prioritizing daily walking with minimal food restriction',
+      studyNoteMn:
+        'Япон улсын "Metabo" хөтөлбөр: өдөрт +3,000 алхам ба бага зэргийн илчлэг хасалт нь булчин алдахгүйгээр дотор өөхийг тууштай бууруулдаг.',
+      studyNoteEn:
+        'Japanese Metabo Guideline: +3,000 daily steps + mild dietary cut steadily reduces visceral fat without muscle loss.',
+    },
+    medium: {
+      totalDeficitKcal: mediumDeficit,
+      defaultMovementSplitPct: 0.58,
+      weeklyLossKg: Number(((mediumDeficit * 7) / 7700).toFixed(2)),
+      labelMn: 'Дундаж (Зорилтот хурд)',
+      labelEn: 'Target Goal Pace (Medium)',
+      descMn: `${targetDate} гэхэд яг ${targetWeightKg} кг зорилтдоо хүрэх тэнцвэртэй хурд`,
+      descEn: `Exact balanced daily deficit to reach your ${targetWeightKg} kg target on ${targetDate}`,
+      studyNoteMn:
+        'Азийн Таргалалт Судлалын Холбоо (AASO) болон БНСУ-ын KSSO зөвлөмж: өдрийн алдагдлыг хөдөлгөөн + хоолны зохицуулалтаар хослуулах нь хамгийн тогтвортой үр дүн өгдөг.',
+      studyNoteEn:
+        'Asian-Pacific & Korean Society for the Study of Obesity (KSSO): combining daily walking and portion control yields highest long-term adherence.',
+    },
+    heavy: {
+      totalDeficitKcal: heavyDeficit,
+      defaultMovementSplitPct: 0.53,
+      weeklyLossKg: Number(((heavyDeficit * 7) / 7700).toFixed(2)),
+      labelMn: 'Эрчимтэй (Heavy)',
+      labelEn: 'Intensive Push',
+      descMn: 'Зорилтот жиндээ хугацаанаас өмнө хүрэх эсвэл зуны өмнө илүү их өөх шатаах',
+      descEn: 'Reach your target weight ahead of schedule or burn extra fat before summer',
+      studyNoteMn:
+        'Ази хүний бодисын солилцооны аюулгүй дээд хязгаар: өндөр алдагдлын үед булчин задлахгүйн тулд хөдөлгөөний шаталтыг өндөр байлгах шаардлагатай.',
+      studyNoteEn:
+        'Safe Asian clinical ceiling: higher daily deficits must derive heavily from physical activity so food intake stays above safe BMR floors.',
+    },
+  };
+}
+
+/**
+ * Recalculates `movementAddKcal` and `dietCutKcal` whenever the user updates
+ * `weightKg`, `targetWeightKg`, `targetDate`, or `deficitTier`.
+ */
+export function syncProfileSlidersWithGoal(
+  profile: UserProfile,
+  referenceDate: Date = new Date()
+): UserProfile {
+  const tiers = getDynamicDeficitTiers(
+    profile.weightKg,
+    profile.targetWeightKg,
+    profile.targetDate,
+    referenceDate
+  );
+  const activeTier = tiers[profile.deficitTier];
+  const movementAddKcal = Math.round(
+    activeTier.totalDeficitKcal * activeTier.defaultMovementSplitPct
+  );
+  const dietCutKcal = Math.max(0, activeTier.totalDeficitKcal - movementAddKcal);
+
+  return {
+    ...profile,
+    movementAddKcal,
+    dietCutKcal,
+  };
+}
+
+export const DEFAULT_USER_PROFILE: UserProfile = syncProfileSlidersWithGoal({
   name: 'Тэмүүлэн',
   gender: 'male',
   age: 28,
   heightCm: 172,
   weightKg: 78,
   targetWeightKg: 68,
-  targetDate: getNextJune15(),
+  targetDate: '2027-06-15',
   commuteMethod: 'bus_walk',
   commuteDistanceKm: 2.5,
   commuteRoundTrip: true,
   exerciseDaysPerWeek: 2,
   exerciseIntensity: 'moderate',
   deficitTier: 'medium',
-  movementAddKcal: 320, // Movement prioritized first!
-  dietCutKcal: 230, // Smaller food cut needed because movement is high
+  movementAddKcal: 190,
+  dietCutKcal: 135,
   dailyProteinGrams: 115,
   resistanceDaysPerWeek: 3,
-};
-
-export const DEFICIT_TIERS: Record<
-  DeficitTier,
-  {
-    totalDeficitKcal: number;
-    defaultMovementSplitPct: number; // Prioritize movement first!
-    weeklyLossKg: number;
-    labelMn: string;
-    labelEn: string;
-    descMn: string;
-    descEn: string;
-    studyNoteMn: string;
-    studyNoteEn: string;
-  }
-> = {
-  light: {
-    totalDeficitKcal: 350,
-    defaultMovementSplitPct: 0.65, // 65% from movement (+230 kcal), 35% from food (-120 kcal)
-    weeklyLossKg: 0.32,
-    labelMn: 'Хөнгөн (Light)',
-    labelEn: 'Light Pace',
-    descMn: 'Өлсөхгүйгээр алхалт болон хөдөлгөөнөө нэмж аажмаар галбиржих',
-    descEn: 'Gentle pace prioritizing daily walking with minimal food restriction',
-    studyNoteMn: 'Япон улсын "Metabo" хөтөлбөр: өдөрт +3,000 алхам ба бага зэргийн илчлэг хасалт (~350 ккал) нь булчин алдахгүйгээр дотор өөхийг тууштай бууруулдаг.',
-    studyNoteEn: 'Japanese Metabo Guideline: +3,000 daily steps + mild dietary cut (~350 kcal/day) steadily reduces visceral fat without muscle loss.',
-  },
-  medium: {
-    totalDeficitKcal: 550,
-    defaultMovementSplitPct: 0.58, // ~320 kcal movement + ~230 kcal food cut
-    weeklyLossKg: 0.5,
-    labelMn: 'Дундаж (Medium)',
-    labelEn: 'Balanced Standard',
-    descMn: 'Эмч нарын хамгийн их зөвлөдөг тэнцвэртэй хурд (7 хоногт ~0.5 кг)',
-    descEn: 'Doctor-recommended gold standard (~0.5 kg/week via active burn + smart meals)',
-    studyNoteMn: 'Азийн Таргалалт Судлалын Холбоо (AASO) болон БНСУ-ын KSSO зөвлөмж: өдөрт ~500–550 ккал алдагдлыг хөдөлгөөн + хоолны зохицуулалтаар хослуулах нь хамгийн тогтвортой үр дүн өгдөг.',
-    studyNoteEn: 'Asian-Pacific & Korean Society for the Study of Obesity (KSSO): ~500–550 kcal/day deficit combining daily walking and portion control yields highest long-term adherence.',
-  },
-  heavy: {
-    totalDeficitKcal: 750,
-    defaultMovementSplitPct: 0.53, // ~400 kcal movement + ~350 kcal food cut
-    weeklyLossKg: 0.68,
-    labelMn: 'Эрчимтэй (Heavy)',
-    labelEn: 'Intensive Push',
-    descMn: 'Зуны өмнө богино хугацаанд өндөр идэвх, чанд хооллолтоор жин хасах',
-    descEn: 'High daily movement + disciplined meal portions for maximum safe summer transformation',
-    studyNoteMn: 'Ази хүний бодисын солилцооны аюулгүй дээд хязгаар: өдөрт 750 ккал-аас хэтэрсэн хоолны хасалт нь булчин задлах эрсдэлтэй тул хөдөлгөөний шаталтыг өндөр байлгах шаардлагатай.',
-    studyNoteEn: 'Safe Asian clinical ceiling: deficits up to 750 kcal/day must derive heavily from physical activity so food intake never drops below safe BMR floors (1,200/1,500 kcal).',
-  },
-};
+});
 
 export interface AsianBmiResult {
   bmi: number;
@@ -217,12 +287,8 @@ export function calculateAsianBmi(heightCm: number, weightKg: number): AsianBmiR
  * Calculates BMR using Ganpule et al. (2007) Asian-validated equation blended with Mifflin-St Jeor.
  */
 export function calculateAsianBmr(gender: Gender, age: number, heightCm: number, weightKg: number): number {
-  // Mifflin-St Jeor
   const mifflin =
     10 * weightKg + 6.25 * heightCm - 5 * age + (gender === 'male' ? 5 : -161);
-  // Ganpule et al. (2007) Asian equation (in kcal/day)
-  // Male: (0.0481 * W + 0.0234 * H - 0.0138 * A - 0.4235) * 1000 / 4.186
-  // Female: (0.0481 * W + 0.0234 * H - 0.0138 * A - 0.9708) * 1000 / 4.186
   const ganpule =
     ((0.0481 * weightKg +
       0.0234 * heightCm -
@@ -247,12 +313,10 @@ export function calculateCommuteMetrics(
 
   switch (method) {
     case 'walk': {
-      // Walking burns ~0.72 kcal per kg per km
       const kcal = Math.round(totalKm * weightKg * 0.72);
       return { commuteKcal: kcal, commuteActiveMeters: Math.round(totalKm * 1000) };
     }
     case 'bus_walk': {
-      // Bus commuters typically walk ~35% of the distance (to/from bus stops, standing) up to 2.2 km total
       const walkedKm = Math.min(2.4, Math.max(0.8, totalKm * 0.35));
       const standingKcal = Math.round(weightKg * 0.35);
       const walkKcal = Math.round(walkedKm * weightKg * 0.72);
@@ -262,12 +326,10 @@ export function calculateCommuteMetrics(
       };
     }
     case 'bike': {
-      // Cycling burns ~0.38 kcal per kg per km, equivalent journey distance
       const kcal = Math.round(totalKm * weightKg * 0.38);
       return { commuteKcal: kcal, commuteActiveMeters: Math.round(totalKm * 1000) };
     }
     case 'car': {
-      // Short walk to parking (~300m total)
       return { commuteKcal: Math.round(weightKg * 0.25), commuteActiveMeters: 300 };
     }
     case 'wfh':
@@ -287,8 +349,6 @@ export function calculateExerciseDailyAverage(
   if (daysPerWeek <= 0) {
     return { dailyAvgExerciseKcal: 0, singleSessionKcal: 0 };
   }
-  // Assume ~45 minute workout session
-  // METs: light = 3.5, moderate = 6.0, intense = 8.5
   const met = intensity === 'light' ? 3.5 : intensity === 'moderate' ? 6.0 : 8.5;
   const durationHours = 0.75; // 45 mins
   const singleSessionKcal = Math.round(met * weightKg * durationHours);
@@ -296,9 +356,6 @@ export function calculateExerciseDailyAverage(
   return { dailyAvgExerciseKcal, singleSessionKcal };
 }
 
-/**
- * Converts calories burned via movement into equivalent walking meters (and km) for the linear journey.
- */
 export function kcalToWalkingMeters(kcal: number, weightKg: number): number {
   const kcalPerKm = Math.max(40, weightKg * 0.72);
   return Math.round((kcal / kcalPerKm) * 1000);
@@ -311,24 +368,26 @@ export function walkingMetersToKcal(meters: number, weightKg: number): number {
 
 export interface CaloriePlanSummary {
   bmrKcal: number;
-  baseNeatKcal: number; // Non-exercise baseline daily living (1.2x BMR)
+  baseNeatKcal: number;
   commuteKcal: number;
   commuteActiveMeters: number;
   dailyAvgExerciseKcal: number;
   singleSessionKcal: number;
-  baselineTdeeKcal: number; // Current daily burn before adding extra summer-goal movement
-  projectedTotalBurnKcal: number; // baselineTdeeKcal + movementAddKcal
-  recommendedDailyFoodKcal: number; // baselineTdeeKcal - dietCutKcal (floored at safe limit)
+  baselineTdeeKcal: number;
+  projectedTotalBurnKcal: number;
+  recommendedDailyFoodKcal: number;
   safeMinFoodKcal: number;
-  totalDailyNetDeficitKcal: number; // movementAddKcal + effectiveDietCutKcal
+  totalDailyNetDeficitKcal: number;
   extraMovementMetersPerDay: number;
-  totalDailyTargetActiveBurnKcal: number; // Commute + Avg Exercise + Extra Movement Slider
+  totalDailyTargetActiveBurnKcal: number;
   totalDailyTargetDistanceMeters: number;
   daysUntilSummerTarget: number;
   kgToLose: number;
   requiredDailyDeficitForTargetDate: number;
   projectedWeightOnTargetDateKg: number;
+  projectedKgLostBySummer: number;
   estimatedCompletionDate: string;
+  dynamicTiers: Record<DeficitTier, TierDefinition>;
   tierProjections: Record<
     DeficitTier,
     {
@@ -350,7 +409,6 @@ export function calculateCaloriePlan(
     profile.heightCm,
     profile.weightKg
   );
-  // Base sedentary living NEAT (20% of BMR)
   const baseNeatKcal = Math.round(bmrKcal * 0.2);
 
   const { commuteKcal, commuteActiveMeters } = calculateCommuteMetrics(
@@ -369,12 +427,12 @@ export function calculateCaloriePlan(
   const baselineTdeeKcal = bmrKcal + baseNeatKcal + commuteKcal + dailyAvgExerciseKcal;
   const safeMinFoodKcal = profile.gender === 'male' ? 1450 : 1200;
 
-  // Apply the two linked sliders:
-  // 1) Extra movement burn
   const movementAddKcal = Math.max(0, Math.round(profile.movementAddKcal));
-  // 2) Food calorie cut (respecting safe minimum food intake floor)
   const maxSafeDietCut = Math.max(0, baselineTdeeKcal - safeMinFoodKcal);
-  const effectiveDietCutKcal = Math.min(Math.max(0, Math.round(profile.dietCutKcal)), maxSafeDietCut);
+  const effectiveDietCutKcal = Math.min(
+    Math.max(0, Math.round(profile.dietCutKcal)),
+    maxSafeDietCut
+  );
 
   const recommendedDailyFoodKcal = baselineTdeeKcal - effectiveDietCutKcal;
   const projectedTotalBurnKcal = baselineTdeeKcal + movementAddKcal;
@@ -388,38 +446,49 @@ export function calculateCaloriePlan(
     kcalToWalkingMeters(dailyAvgExerciseKcal, profile.weightKg) +
     extraMovementMetersPerDay;
 
-  // Date & Weight math (1 kg body fat ≈ 7,700 kcal)
-  const targetDateObj = new Date(profile.targetDate + 'T00:00:00');
-  const diffMs = targetDateObj.getTime() - referenceDate.getTime();
-  const daysUntilSummerTarget = Math.max(14, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
-
+  const daysUntilSummerTarget = getDaysUntilDate(profile.targetDate, referenceDate);
   const kgToLose = Math.max(0, Number((profile.weightKg - profile.targetWeightKg).toFixed(1)));
   const totalKcalToLose = kgToLose * 7700;
-  const requiredDailyDeficitForTargetDate = Math.round(totalKcalToLose / daysUntilSummerTarget);
+  const requiredDailyDeficitForTargetDate = Math.round(
+    totalKcalToLose / daysUntilSummerTarget
+  );
 
-  const projectedKgLostBySummer = (totalDailyNetDeficitKcal * daysUntilSummerTarget) / 7700;
+  const rawKgLostBySummer = (totalDailyNetDeficitKcal * daysUntilSummerTarget) / 7700;
+  const projectedKgLostBySummer = Number(rawKgLostBySummer.toFixed(1));
   const projectedWeightOnTargetDateKg = Number(
-    Math.max(40, profile.weightKg - projectedKgLostBySummer).toFixed(1)
+    Math.max(38, profile.weightKg - rawKgLostBySummer).toFixed(1)
   );
 
   const daysNeededAtCurrentDeficit =
     totalDailyNetDeficitKcal > 0
       ? Math.ceil(totalKcalToLose / totalDailyNetDeficitKcal)
       : 365;
+  const refStart = new Date(
+    referenceDate.getFullYear(),
+    referenceDate.getMonth(),
+    referenceDate.getDate()
+  );
   const completionDateObj = new Date(
-    referenceDate.getTime() + daysNeededAtCurrentDeficit * 24 * 60 * 60 * 1000
+    refStart.getTime() + daysNeededAtCurrentDeficit * 24 * 60 * 60 * 1000
   );
   const estimatedCompletionDate = completionDateObj.toISOString().slice(0, 10);
 
+  const dynamicTiers = getDynamicDeficitTiers(
+    profile.weightKg,
+    profile.targetWeightKg,
+    profile.targetDate,
+    referenceDate
+  );
+
   const tierProjections = (['light', 'medium', 'heavy'] as DeficitTier[]).reduce(
     (acc, tier) => {
-      const def = DEFICIT_TIERS[tier].totalDeficitKcal;
+      const def = dynamicTiers[tier].totalDeficitKcal;
       const lostBySummer = (def * daysUntilSummerTarget) / 7700;
       const weightBySummer = Number(
-        Math.max(40, profile.weightKg - lostBySummer).toFixed(1)
+        Math.max(38, profile.weightKg - lostBySummer).toFixed(1)
       );
       const dNeeded = kgToLose > 0 ? Math.ceil((kgToLose * 7700) / def) : 0;
-      const dObj = new Date(referenceDate.getTime() + dNeeded * 24 * 60 * 60 * 1000);
+      const dObj = new Date(refStart.getTime() + dNeeded * 24 * 60 * 60 * 1000);
       acc[tier] = {
         totalDeficitKcal: def,
         projectedWeightBySummerKg: weightBySummer,
@@ -450,7 +519,9 @@ export function calculateCaloriePlan(
     kgToLose,
     requiredDailyDeficitForTargetDate,
     projectedWeightOnTargetDateKg,
+    projectedKgLostBySummer,
     estimatedCompletionDate,
+    dynamicTiers,
     tierProjections,
   };
 }
@@ -465,17 +536,14 @@ export interface BodyRecompAnalysis {
   proteinGramsPerKg: number;
   targetProteinGrams: number;
   isPromotingMuscleGrowth: boolean;
-  recompScore: number; // 0 to 100
+  recompScore: number;
   statusTitleMn: string;
   statusTitleEn: string;
   adviceMn: string;
   adviceEn: string;
-  extraMuscleBmrBoostKcal: number; // How much +2kg muscle increases daily burn
+  extraMuscleBmrBoostKcal: number;
 }
 
-/**
- * Evaluates Fat Ratio (%) vs. Muscle Ratio (%) and whether muscle growth is promoted while lowering fat.
- */
 export function calculateBodyRecomp(
   profile: UserProfile,
   plan: CaloriePlanSummary
@@ -483,9 +551,7 @@ export function calculateBodyRecomp(
   const { bmi } = calculateAsianBmi(profile.heightCm, profile.weightKg);
   const sexFactor = profile.gender === 'male' ? 1 : 0;
 
-  // Asian-calibrated Deurenberg body fat estimation if not overridden by smart scale
-  const rawBodyFat =
-    1.2 * bmi + 0.23 * profile.age - 10.8 * sexFactor - 4.2; // +1.2% Asian visceral adjustment
+  const rawBodyFat = 1.2 * bmi + 0.23 * profile.age - 10.8 * sexFactor - 4.2;
   const estimatedBodyFatPct = Number(
     (
       profile.customBodyFatPct ??
@@ -493,7 +559,6 @@ export function calculateBodyRecomp(
     ).toFixed(1)
   );
 
-  // Skeletal muscle mass % (typical healthy range: ~38-44% male, ~30-36% female)
   const rawMusclePct =
     profile.gender === 'male'
       ? Math.max(26, 54 - estimatedBodyFatPct * 0.65)
@@ -513,19 +578,15 @@ export function calculateBodyRecomp(
   const proteinGramsPerKg = Number((currentProtein / profile.weightKg).toFixed(2));
   const resistanceDays = profile.resistanceDaysPerWeek ?? profile.exerciseDaysPerWeek;
 
-  // Check if conditions promote muscle growth while lowering fat ratio:
-  // 1) Protein >= 1.4 g/kg
-  // 2) Resistance/Exercise >= 2 days/wk
-  // 3) Food deficit not overly aggressive (<= 500 kcal food cut)
   const proteinScore = Math.min(40, Math.round((proteinGramsPerKg / 1.6) * 40));
   const exerciseScore = Math.min(40, Math.round((resistanceDays / 3) * 40));
-  const deficitSafetyScore = plan.recommendedDailyFoodKcal >= plan.safeMinFoodKcal + 150 ? 20 : 10;
+  const deficitSafetyScore =
+    plan.recommendedDailyFoodKcal >= plan.safeMinFoodKcal + 150 ? 20 : 10;
   const recompScore = Math.min(100, proteinScore + exerciseScore + deficitSafetyScore);
 
   const isPromotingMuscleGrowth =
     proteinGramsPerKg >= 1.35 && resistanceDays >= 2 && profile.dietCutKcal <= 500;
 
-  // Project summer body composition on June 15th
   const totalWeightLossKg = Math.max(
     0,
     profile.weightKg - plan.projectedWeightOnTargetDateKg
@@ -533,7 +594,10 @@ export function calculateBodyRecomp(
   const muscleChangeKg = isPromotingMuscleGrowth
     ? Math.min(2.2, (plan.daysUntilSummerTarget / 30) * 0.28)
     : -Math.min(1.5, totalWeightLossKg * 0.18);
-  const fatLostKg = Math.max(0, totalWeightLossKg + (muscleChangeKg > 0 ? muscleChangeKg * 0.5 : 0));
+  const fatLostKg = Math.max(
+    0,
+    totalWeightLossKg + (muscleChangeKg > 0 ? muscleChangeKg * 0.5 : 0)
+  );
 
   const summerWeight = plan.projectedWeightOnTargetDateKg;
   const summerFatMass = Math.max(4, fatMassKg - fatLostKg);
@@ -544,8 +608,7 @@ export function calculateBodyRecomp(
     ((summerMuscleMass / summerWeight) * 100).toFixed(1)
   );
 
-  // 1 kg of skeletal muscle burns ~13-15 kcal/day at rest, plus ~30-45 kcal/day via amplified NEAT/workout output
-  const extraMuscleBmrBoostKcal = 90; // For +2kg active muscle mass (resting + active metabolic effect)
+  const extraMuscleBmrBoostKcal = 90;
 
   let statusTitleMn = 'Булчин өсөж, өөхний хувь буурч байна (Recomposition)';
   let statusTitleEn = 'Muscle Growth Promoted & Fat Ratio Lowering';
@@ -596,14 +659,9 @@ export function calculateBodyRecomp(
   };
 }
 
-/**
- * Generates realistic 28-day history for the Duolingo / GitHub Commit Deficit Heatmap
- * so the user immediately sees how brighter squares represent higher daily deficits.
- */
 export function generateInitialHeatmapHistory(targetDeficitKcal: number): DailyProgressLog[] {
   const logs: DailyProgressLog[] = [];
   const today = new Date();
-  // Deterministic pattern of realistic daily achievements over the past 27 days
   const sampleMultipliers = [
     0.6, 0.85, 1.05, 0.9, 1.35, 1.1, 0.4,
     0.95, 1.15, 1.45, 0.8, 1.0, 1.25, 0.75,
@@ -644,7 +702,7 @@ export const INITIAL_FRIENDS_AND_FAMILY: FriendRacer[] = [
     avatarColor: 'from-amber-500 to-orange-600',
     badgeEmoji: '🔥',
     todayBurnKcal: 640,
-    todayGoalKcal: 550, // Overdid his goal today!
+    todayGoalKcal: 550,
     todayWalkedMeters: 6850,
     weightLostKg: 4.2,
     goalCompletionPct: 116,
@@ -674,7 +732,7 @@ export const INITIAL_FRIENDS_AND_FAMILY: FriendRacer[] = [
     avatarColor: 'from-sky-500 to-indigo-600',
     badgeEmoji: '🏃',
     todayBurnKcal: 360,
-    todayGoalKcal: 680, // Ate extra snack so his goal moved further right!
+    todayGoalKcal: 680,
     todayWalkedMeters: 3900,
     weightLostKg: 2.8,
     goalCompletionPct: 53,

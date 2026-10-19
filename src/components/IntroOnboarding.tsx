@@ -7,9 +7,9 @@ import {
   DeficitTier,
   CommuteMethod,
   ExerciseIntensity,
-  DEFICIT_TIERS,
   calculateAsianBmi,
   kcalToWalkingMeters,
+  syncProfileSlidersWithGoal,
 } from '@/lib/calorieEngine';
 import {
   SAMPLE_MEALS,
@@ -33,12 +33,17 @@ import {
   ArrowRight,
   Info,
   Scale,
+  LogIn,
+  HeartPulse,
+  TrendingDown,
 } from 'lucide-react';
 
 interface IntroOnboardingProps {
   profile: UserProfile;
   plan: CaloriePlanSummary;
   lang: Language;
+  authUser: { name: string; email: string } | null;
+  onOpenAuth: () => void;
   onUpdateProfile: (updater: (prev: UserProfile) => UserProfile) => void;
   onGoToHomeJourney: () => void;
 }
@@ -47,6 +52,8 @@ export default function IntroOnboarding({
   profile,
   plan,
   lang,
+  authUser,
+  onOpenAuth,
   onUpdateProfile,
   onGoToHomeJourney,
 }: IntroOnboardingProps) {
@@ -60,24 +67,19 @@ export default function IntroOnboarding({
     dinner: 0,
   });
 
-  // Select one of the 3 deficit tiers (Light, Medium, Heavy) and set the linked sliders
+  // Select one of the 3 deficit tiers (Light, Medium, Heavy) and sync the linked sliders
   const handleSelectTier = (tier: DeficitTier) => {
-    const tierInfo = DEFICIT_TIERS[tier];
-    const totalDeficit = tierInfo.totalDeficitKcal;
-    const movementKcal = Math.round(totalDeficit * tierInfo.defaultMovementSplitPct);
-    const dietKcal = totalDeficit - movementKcal;
-
-    onUpdateProfile((prev) => ({
-      ...prev,
-      deficitTier: tier,
-      movementAddKcal: movementKcal,
-      dietCutKcal: dietKcal,
-    }));
+    onUpdateProfile((prev) =>
+      syncProfileSlidersWithGoal({
+        ...prev,
+        deficitTier: tier,
+      })
+    );
   };
 
   // Linked Slider 1: Movement Burn (Prioritized first!)
   const handleMovementSliderChange = (newMovementKcal: number) => {
-    const tierTotal = DEFICIT_TIERS[profile.deficitTier].totalDeficitKcal;
+    const tierTotal = plan.dynamicTiers[profile.deficitTier].totalDeficitKcal;
     const linkedDietCut = Math.max(0, tierTotal - newMovementKcal);
     onUpdateProfile((prev) => ({
       ...prev,
@@ -88,7 +90,7 @@ export default function IntroOnboarding({
 
   // Linked Slider 2: Food Calorie Cut
   const handleDietSliderChange = (newDietCutKcal: number) => {
-    const tierTotal = DEFICIT_TIERS[profile.deficitTier].totalDeficitKcal;
+    const tierTotal = plan.dynamicTiers[profile.deficitTier].totalDeficitKcal;
     const maxSafeCut = Math.max(0, plan.baselineTdeeKcal - plan.safeMinFoodKcal);
     const clampedDietCut = Math.min(newDietCutKcal, maxSafeCut);
     const linkedMovement = Math.max(50, tierTotal - clampedDietCut);
@@ -181,8 +183,59 @@ export default function IntroOnboarding({
   );
 
   return (
-    <div className="space-y-8 pb-12">
-      {/* HERO BANNER (SUNNY WHITE / EMERALD / AMBER LIGHT THEME) */}
+    <div className="space-y-8 pb-8">
+      {/* INTRO / WELCOME & MISSION BANNER */}
+      <div className="rounded-3xl bg-white border border-emerald-200 p-6 sm:p-7 shadow-sm flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
+        <div className="space-y-2 max-w-2xl">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-300">
+            <HeartPulse className="w-3.5 h-3.5 text-emerald-600" />
+            {lang === 'mn'
+              ? 'Танилцуулга (Intro) • Зун яг ална'
+              : 'Welcome Intro • Zunygalna'}
+          </div>
+          <h2 className="text-xl sm:text-2xl font-black text-slate-900">
+            {lang === 'mn'
+              ? 'Өдөр тутмын жижиг үйлдэл хуримтлагдсаар зуны өмнө том өөрчлөлт болдог'
+              : 'See the Effects of Small Daily Actions on Your Lifestyle Over Time'}
+          </h2>
+          <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
+            {lang === 'mn'
+              ? '1) Доорх сонголтуудаар өөрийн мэдээлэл болон Зуны зорилтот жингээ оруулна уу. 2) Таны өдөрт шатаах илчлэг, 3 төрлийн хурд (Хөнгөн, Дундаж, Эрчимтэй), болон Өглөө/Өдөр/Оройн хоолны граммын жишээ шууд тооцоологдоно. 3) Хуудасны доод хэсэгт найз нөхөд, гэр бүлтэйгээ уралдах Шугаман Замнал (Home) байрлана.'
+              : '1) Select your metrics & Target Weight below using quick sliders and tap-cards. 2) Instantly see your daily calorie burn, 3 deficit options, and metric meal portions in grams. 3) Scroll down or tap Home for your daily right-facing linear journey with friends & family.'}
+          </p>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3 shrink-0 w-full lg:w-auto">
+          {!authUser && (
+            <button
+              type="button"
+              onClick={onOpenAuth}
+              className="flex-1 lg:flex-initial px-5 py-3 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-sm cursor-pointer"
+            >
+              <LogIn className="w-4 h-4 text-emerald-400" />
+              <span>
+                {lang === 'mn'
+                  ? 'Нэвтрэх / Бүртгүүлэх'
+                  : 'Login / Register Account'}
+              </span>
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={onGoToHomeJourney}
+            className="flex-1 lg:flex-initial px-5 py-3 rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-sm cursor-pointer"
+          >
+            <span>
+              {lang === 'mn'
+                ? 'Шугаман замнал (Home) руу очих'
+                : 'Jump to Linear Journey'}
+            </span>
+            <ArrowRight className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+
+      {/* HERO LIVE SUMMARY BANNER */}
       <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-50 via-white to-amber-50 border border-emerald-200 p-6 sm:p-8 shadow-md">
         <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
           <span className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
@@ -206,7 +259,7 @@ export default function IntroOnboarding({
           {t.introHeroSubtitle}
         </p>
 
-        {/* LIVE SUMMARY PILLS */}
+        {/* LIVE SUMMARY PILLS (ALL 4 UPDATE LIVE WHEN TARGET WEIGHT OR SLIDERS CHANGE!) */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6">
           <div className="rounded-2xl bg-white border border-slate-200 p-3.5 shadow-xs">
             <div className="text-xs font-medium text-slate-500">
@@ -252,20 +305,29 @@ export default function IntroOnboarding({
             </div>
           </div>
 
-          <div className="rounded-2xl bg-white border border-slate-200 p-3.5 shadow-xs">
-            <div className="text-xs font-medium text-slate-500">
-              {lang === 'mn'
-                ? `${profile.targetDate} гэхэд жин`
-                : `Weight by ${profile.targetDate}`}
+          {/* CARD 4 (ss1): UPDATES LIVE WITH TARGET WEIGHT, TIER & SLIDERS */}
+          <div className="rounded-2xl bg-white border-2 border-emerald-400 p-3.5 shadow-xs">
+            <div className="text-xs font-bold text-slate-600 flex items-center justify-between">
+              <span>
+                {lang === 'mn'
+                  ? `${profile.targetDate} гэхэд жин`
+                  : `Weight by ${profile.targetDate}`}
+              </span>
+              <TrendingDown className="w-3.5 h-3.5 text-emerald-600" />
             </div>
-            <div className="text-xl font-extrabold text-slate-900 mt-0.5">
-              {plan.projectedWeightOnTargetDateKg}{' '}
-              <span className="text-xs font-normal text-slate-500">kg</span>
+            <div className="text-xl font-black text-slate-900 mt-0.5 flex items-baseline gap-2">
+              <span>
+                {plan.projectedWeightOnTargetDateKg}{' '}
+                <span className="text-xs font-normal text-slate-500">kg</span>
+              </span>
+              <span className="text-xs font-extrabold text-emerald-600">
+                (-{plan.projectedKgLostBySummer} kg)
+              </span>
             </div>
-            <div className="text-[11px] text-emerald-600 font-semibold mt-1">
+            <div className="text-[11px] text-emerald-700 font-bold mt-1">
               {lang === 'mn'
-                ? `Зорилт: ${profile.targetWeightKg} кг (${plan.estimatedCompletionDate})`
-                : `Target: ${profile.targetWeightKg} kg (Est. ${plan.estimatedCompletionDate})`}
+                ? `Зорилт: ${profile.targetWeightKg} кг (-${plan.kgToLose} кг) • -${plan.totalDailyNetDeficitKcal} ккал/өдөр`
+                : `Goal: ${profile.targetWeightKg} kg (-${plan.kgToLose} kg) • -${plan.totalDailyNetDeficitKcal} kcal/day`}
             </div>
           </div>
         </div>
@@ -322,20 +384,24 @@ export default function IntroOnboarding({
                 type="date"
                 value={profile.targetDate}
                 onChange={(e) =>
-                  onUpdateProfile((p) => ({
-                    ...p,
-                    targetDate: e.target.value || p.targetDate,
-                  }))
+                  onUpdateProfile((p) =>
+                    syncProfileSlidersWithGoal({
+                      ...p,
+                      targetDate: e.target.value || p.targetDate,
+                    })
+                  )
                 }
                 className="w-full rounded-2xl bg-slate-50 border border-slate-200 px-4 py-2.5 text-sm font-bold text-slate-900 focus:outline-none focus:border-emerald-500"
               />
               <button
                 type="button"
                 onClick={() =>
-                  onUpdateProfile((p) => ({
-                    ...p,
-                    targetDate: '2027-06-15',
-                  }))
+                  onUpdateProfile((p) =>
+                    syncProfileSlidersWithGoal({
+                      ...p,
+                      targetDate: '2027-06-15',
+                    })
+                  )
                 }
                 className="shrink-0 px-3.5 py-2.5 rounded-2xl text-xs font-bold bg-amber-100 text-amber-800 border border-amber-300 hover:bg-amber-200 cursor-pointer"
               >
@@ -414,11 +480,13 @@ export default function IntroOnboarding({
               value={profile.weightKg}
               onChange={(e) => {
                 const newW = Number(e.target.value);
-                onUpdateProfile((p) => ({
-                  ...p,
-                  weightKg: newW,
-                  targetWeightKg: Math.min(p.targetWeightKg, newW - 1),
-                }));
+                onUpdateProfile((p) =>
+                  syncProfileSlidersWithGoal({
+                    ...p,
+                    weightKg: newW,
+                    targetWeightKg: Math.min(p.targetWeightKg, newW - 1),
+                  })
+                );
               }}
               className="w-full accent-emerald-600 cursor-pointer"
             />
@@ -429,8 +497,8 @@ export default function IntroOnboarding({
             </div>
           </div>
 
-          {/* TARGET WEIGHT (KG) */}
-          <div className="rounded-2xl bg-emerald-50/80 border border-emerald-300 p-4">
+          {/* TARGET WEIGHT (KG) — DYNAMICALLY UPDATES PLAN, SLIDERS & SS1! */}
+          <div className="rounded-2xl bg-emerald-50/80 border-2 border-emerald-400 p-4 shadow-2xs">
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs font-bold text-emerald-800">
                 {t.targetWeightLabel}
@@ -445,12 +513,15 @@ export default function IntroOnboarding({
               max={Math.max(41, profile.weightKg - 0.5)}
               step={0.5}
               value={profile.targetWeightKg}
-              onChange={(e) =>
-                onUpdateProfile((p) => ({
-                  ...p,
-                  targetWeightKg: Number(e.target.value),
-                }))
-              }
+              onChange={(e) => {
+                const newTargetW = Number(e.target.value);
+                onUpdateProfile((p) =>
+                  syncProfileSlidersWithGoal({
+                    ...p,
+                    targetWeightKg: newTargetW,
+                  })
+                );
+              }}
               className="w-full accent-emerald-600 cursor-pointer"
             />
             <div className="flex justify-between text-[11px] text-emerald-800 font-medium mt-1">
@@ -646,10 +717,10 @@ export default function IntroOnboarding({
           <p className="text-xs sm:text-sm text-slate-600 mt-1">{t.twoSidesDesc}</p>
         </div>
 
-        {/* 3 Deficit Tier Cards */}
+        {/* 3 Deficit Tier Cards (Dynamically Scaled to Target Weight & Target Date) */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {(['light', 'medium', 'heavy'] as DeficitTier[]).map((tier) => {
-            const info = DEFICIT_TIERS[tier];
+            const info = plan.dynamicTiers[tier];
             const proj = plan.tierProjections[tier];
             const active = profile.deficitTier === tier;
 
@@ -722,8 +793,8 @@ export default function IntroOnboarding({
           <Info className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
           <p className="text-xs text-slate-700 leading-relaxed font-medium">
             {lang === 'mn'
-              ? DEFICIT_TIERS[profile.deficitTier].studyNoteMn
-              : DEFICIT_TIERS[profile.deficitTier].studyNoteEn}
+              ? plan.dynamicTiers[profile.deficitTier].studyNoteMn
+              : plan.dynamicTiers[profile.deficitTier].studyNoteEn}
           </p>
         </div>
 
@@ -757,7 +828,7 @@ export default function IntroOnboarding({
               <input
                 type="range"
                 min={50}
-                max={750}
+                max={850}
                 step={10}
                 value={profile.movementAddKcal}
                 onChange={(e) => handleMovementSliderChange(Number(e.target.value))}
@@ -954,18 +1025,6 @@ export default function IntroOnboarding({
               </div>
             );
           })}
-        </div>
-
-        {/* CTA TO LAUNCH DAILY LINEAR JOURNEY */}
-        <div className="pt-2 flex justify-center">
-          <button
-            type="button"
-            onClick={onGoToHomeJourney}
-            className="w-full sm:w-auto px-8 py-4 rounded-2xl font-extrabold text-base bg-gradient-to-r from-emerald-500 to-amber-500 text-white shadow-lg shadow-emerald-500/25 hover:brightness-105 transition-all flex items-center justify-center gap-2 cursor-pointer"
-          >
-            <span>{t.startJourneyCta}</span>
-            <ArrowRight className="w-5 h-5" />
-          </button>
         </div>
       </section>
     </div>

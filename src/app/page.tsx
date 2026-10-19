@@ -9,6 +9,7 @@ import {
   INITIAL_FRIENDS_AND_FAMILY,
   calculateCaloriePlan,
   generateInitialHeatmapHistory,
+  syncProfileSlidersWithGoal,
 } from '@/lib/calorieEngine';
 import { Language, TRANSLATIONS } from '@/lib/i18n';
 import IntroOnboarding from '@/components/IntroOnboarding';
@@ -57,14 +58,15 @@ export default function ZunygalnaApp() {
     generateInitialHeatmapHistory(550)
   );
 
-  // Load saved state from localStorage on client mount
+  // Load saved state from localStorage on client mount (v2 key to ensure synced sliders)
   useEffect(() => {
     try {
-      const savedProfile = localStorage.getItem('zunygalna_profile_v1');
+      const savedProfile = localStorage.getItem('zunygalna_profile_v2');
       if (savedProfile) {
-        setProfile(JSON.parse(savedProfile));
+        const parsed = JSON.parse(savedProfile) as UserProfile;
+        setProfile(syncProfileSlidersWithGoal(parsed));
       }
-      const savedToday = localStorage.getItem('zunygalna_today_v1');
+      const savedToday = localStorage.getItem('zunygalna_today_v2');
       if (savedToday) {
         setTodayLog(JSON.parse(savedToday));
       }
@@ -80,7 +82,7 @@ export default function ZunygalnaApp() {
   // Persist changes to localStorage
   useEffect(() => {
     try {
-      localStorage.setItem('zunygalna_profile_v1', JSON.stringify(profile));
+      localStorage.setItem('zunygalna_profile_v2', JSON.stringify(profile));
     } catch {
       // Ignore storage write errors
     }
@@ -88,7 +90,7 @@ export default function ZunygalnaApp() {
 
   useEffect(() => {
     try {
-      localStorage.setItem('zunygalna_today_v1', JSON.stringify(todayLog));
+      localStorage.setItem('zunygalna_today_v2', JSON.stringify(todayLog));
     } catch {
       // Ignore storage write errors
     }
@@ -132,7 +134,10 @@ export default function ZunygalnaApp() {
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-3">
           {/* Brand Logo */}
           <div
-            onClick={() => setActiveTab('home')}
+            onClick={() => {
+              setActiveTab('intro');
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }}
             className="flex items-center gap-3 cursor-pointer group"
           >
             <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-emerald-400 via-emerald-500 to-amber-500 flex items-center justify-center text-white font-black text-lg shadow-md shadow-emerald-500/25 group-hover:scale-105 transition-transform">
@@ -191,16 +196,42 @@ export default function ZunygalnaApp() {
       {/* MAIN CONTENT CONTAINER */}
       <main className="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 pt-6">
         {activeTab === 'intro' && (
-          <IntroOnboarding
-            profile={profile}
-            plan={plan}
-            lang={lang}
-            onUpdateProfile={setProfile}
-            onGoToHomeJourney={() => {
-              setActiveTab('home');
-              window.scrollTo({ top: 0, behavior: 'smooth' });
-            }}
-          />
+          <div className="space-y-8">
+            <IntroOnboarding
+              profile={profile}
+              plan={plan}
+              lang={lang}
+              authUser={authUser}
+              onOpenAuth={() => setIsAuthModalOpen(true)}
+              onUpdateProfile={setProfile}
+              onGoToHomeJourney={() => {
+                const el = document.getElementById('home-journey-section');
+                if (el) {
+                  el.scrollIntoView({ behavior: 'smooth' });
+                } else {
+                  setActiveTab('home');
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }
+              }}
+            />
+
+            {/* BOTTOM OF INTRO PAGE: HOME LINEAR JOURNEY & HEATMAP */}
+            <div id="home-journey-section" className="pt-4 border-t-2 border-emerald-200">
+              <HomeJourney
+                profile={profile}
+                plan={plan}
+                lang={lang}
+                todayLog={todayLog}
+                historyLogs={historyLogs}
+                friends={friends}
+                personalBestKcal={personalBestKcal}
+                onUpdateTodayLog={(updater) => {
+                  setTodayLog((prev) => updater(prev));
+                }}
+                onAddFriend={handleAddFriend}
+              />
+            </div>
+          </div>
         )}
 
         {activeTab === 'home' && (
@@ -236,7 +267,28 @@ export default function ZunygalnaApp() {
         <div className="max-w-xl mx-auto px-3 py-2 grid grid-cols-4 gap-2">
           <button
             type="button"
-            onClick={() => setActiveTab('home')}
+            onClick={() => {
+              setActiveTab('intro');
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }}
+            className={`py-2 px-3 rounded-2xl flex flex-col items-center justify-center gap-1 transition-all cursor-pointer ${
+              activeTab === 'intro'
+                ? 'bg-emerald-50 text-emerald-700 border border-emerald-300 font-extrabold shadow-xs'
+                : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100/70'
+            }`}
+          >
+            <Sliders className="w-5 h-5" />
+            <span className="text-[11px]">
+              {lang === 'mn' ? 'Танилцуулга' : 'Intro & Plan'}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('home');
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }}
             className={`py-2 px-3 rounded-2xl flex flex-col items-center justify-center gap-1 transition-all cursor-pointer ${
               activeTab === 'home'
                 ? 'bg-emerald-50 text-emerald-700 border border-emerald-300 font-extrabold shadow-xs'
@@ -249,20 +301,10 @@ export default function ZunygalnaApp() {
 
           <button
             type="button"
-            onClick={() => setActiveTab('intro')}
-            className={`py-2 px-3 rounded-2xl flex flex-col items-center justify-center gap-1 transition-all cursor-pointer ${
-              activeTab === 'intro'
-                ? 'bg-emerald-50 text-emerald-700 border border-emerald-300 font-extrabold shadow-xs'
-                : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100/70'
-            }`}
-          >
-            <Sliders className="w-5 h-5" />
-            <span className="text-[11px]">{t.navIntro}</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveTab('learn')}
+            onClick={() => {
+              setActiveTab('learn');
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }}
             className={`py-2 px-3 rounded-2xl flex flex-col items-center justify-center gap-1 transition-all cursor-pointer ${
               activeTab === 'learn'
                 ? 'bg-emerald-50 text-emerald-700 border border-emerald-300 font-extrabold shadow-xs'
@@ -275,7 +317,10 @@ export default function ZunygalnaApp() {
 
           <button
             type="button"
-            onClick={() => setActiveTab('body')}
+            onClick={() => {
+              setActiveTab('body');
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }}
             className={`py-2 px-3 rounded-2xl flex flex-col items-center justify-center gap-1 transition-all cursor-pointer ${
               activeTab === 'body'
                 ? 'bg-emerald-50 text-emerald-700 border border-emerald-300 font-extrabold shadow-xs'
