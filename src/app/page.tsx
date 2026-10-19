@@ -12,31 +12,41 @@ import {
   syncProfileSlidersWithGoal,
 } from '@/lib/calorieEngine';
 import { Language, TRANSLATIONS } from '@/lib/i18n';
-import IntroOnboarding from '@/components/IntroOnboarding';
+import IntroGuidedTour from '@/components/IntroGuidedTour';
+import OverviewPage from '@/components/OverviewPage';
 import HomeJourney from '@/components/HomeJourney';
+import ShopSection from '@/components/ShopSection';
 import LearnSection from '@/components/LearnSection';
 import BodyRecompSection from '@/components/BodyRecompSection';
 import AuthModal from '@/components/AuthModal';
+import SettingsModal from '@/components/SettingsModal';
 import {
-  Flame,
-  Sliders,
+  LayoutGrid,
+  Users,
+  ShoppingBag,
   BookOpen,
-  Activity,
-  UserCheck,
-  Globe,
-  LogIn,
+  Settings,
+  User,
 } from 'lucide-react';
 
-type ActiveTab = 'intro' | 'home' | 'learn' | 'body';
+type ActiveSubmenu = 'overview' | 'team' | 'shop' | 'learn';
 
 export default function ZunygalnaApp() {
   const [lang, setLang] = useState<Language>('mn');
-  const [activeTab, setActiveTab] = useState<ActiveTab>('intro');
+  // Guided tour mode: shown first with NO bottom submenus until finished, or when editing a card
+  const [isIntroActive, setIsIntroActive] = useState<boolean>(true);
+  const [introInitialStep, setIntroInitialStep] = useState<number>(0);
+
+  // Main 4 submenus after Intro finishes:
+  // 1st: Overview (Ерөнхий), 2nd: Team (Баг), 3rd: Shop (Дэлгүүр), 4th: Learn (Мэдлэг)
+  const [activeTab, setActiveTab] = useState<ActiveSubmenu>('overview');
+
   const [profile, setProfile] = useState<UserProfile>(DEFAULT_USER_PROFILE);
   const [friends, setFriends] = useState<FriendRacer[]>(INITIAL_FRIENDS_AND_FAMILY);
   const [personalBestKcal] = useState<number>(680);
   const [authUser, setAuthUser] = useState<{ name: string; email: string } | null>(null);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
 
   const todayDateStr = useMemo(() => new Date().toISOString().slice(0, 10), []);
 
@@ -58,15 +68,19 @@ export default function ZunygalnaApp() {
     generateInitialHeatmapHistory(550)
   );
 
-  // Load saved state from localStorage on client mount (v2 key to ensure synced sliders)
+  // Load saved state from localStorage on client mount
   useEffect(() => {
     try {
-      const savedProfile = localStorage.getItem('zunygalna_profile_v2');
+      const savedProfile = localStorage.getItem('zunygalna_profile_v3');
       if (savedProfile) {
         const parsed = JSON.parse(savedProfile) as UserProfile;
         setProfile(syncProfileSlidersWithGoal(parsed));
       }
-      const savedToday = localStorage.getItem('zunygalna_today_v2');
+      const savedIntroCompleted = localStorage.getItem('zunygalna_intro_done_v3');
+      if (savedIntroCompleted === 'true') {
+        setIsIntroActive(false);
+      }
+      const savedToday = localStorage.getItem('zunygalna_today_v3');
       if (savedToday) {
         setTodayLog(JSON.parse(savedToday));
       }
@@ -82,7 +96,7 @@ export default function ZunygalnaApp() {
   // Persist changes to localStorage
   useEffect(() => {
     try {
-      localStorage.setItem('zunygalna_profile_v2', JSON.stringify(profile));
+      localStorage.setItem('zunygalna_profile_v3', JSON.stringify(profile));
     } catch {
       // Ignore storage write errors
     }
@@ -90,11 +104,28 @@ export default function ZunygalnaApp() {
 
   useEffect(() => {
     try {
-      localStorage.setItem('zunygalna_today_v2', JSON.stringify(todayLog));
+      localStorage.setItem('zunygalna_today_v3', JSON.stringify(todayLog));
     } catch {
       // Ignore storage write errors
     }
   }, [todayLog]);
+
+  const handleFinishIntro = () => {
+    setIsIntroActive(false);
+    setActiveTab('overview');
+    try {
+      localStorage.setItem('zunygalna_intro_done_v3', 'true');
+    } catch {
+      // Ignore storage write errors
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleEditIntroStep = (stepIndex: number) => {
+    setIntroInitialStep(stepIndex);
+    setIsIntroActive(true);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   const handleAddFriend = (name: string, relation: 'friend' | 'family') => {
     const colors = [
@@ -127,15 +158,30 @@ export default function ZunygalnaApp() {
 
   const t = TRANSLATIONS[lang];
 
+  // ==================== 1. GUIDED TOUR MODE (NO SUBMENUS SHOWN) ====================
+  if (isIntroActive) {
+    return (
+      <IntroGuidedTour
+        profile={profile}
+        plan={plan}
+        lang={lang}
+        initialStep={introInitialStep}
+        onUpdateProfile={setProfile}
+        onFinishIntro={handleFinishIntro}
+      />
+    );
+  }
+
+  // ==================== 2. MAIN APP SHELL AFTER INTRO FINISHES ====================
   return (
     <div className="min-h-screen flex flex-col bg-slate-50 text-slate-900 pb-24">
-      {/* STICKY TOP HEADER (WHITE / LIGHT THEME) */}
-      <header className="sticky top-0 z-40 backdrop-blur-xl bg-white/90 border-b border-slate-200 shadow-xs">
+      {/* STICKY TOP HEADER WITH PROFILE & SETTINGS TOP RIGHT */}
+      <header className="sticky top-0 z-40 backdrop-blur-xl bg-white/95 border-b border-slate-200 shadow-xs">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-3">
           {/* Brand Logo */}
           <div
             onClick={() => {
-              setActiveTab('intro');
+              setActiveTab('overview');
               window.scrollTo({ top: 0, behavior: 'smooth' });
             }}
             className="flex items-center gap-3 cursor-pointer group"
@@ -158,83 +204,58 @@ export default function ZunygalnaApp() {
             </div>
           </div>
 
-          {/* Right Controls: Language Switcher (MN / EN) + Login/Register */}
+          {/* TOP-RIGHT: SETTINGS & PROFILE */}
           <div className="flex items-center gap-2.5">
+            {/* Settings Button */}
             <button
               type="button"
-              onClick={() => setLang((l) => (l === 'mn' ? 'en' : 'mn'))}
-              className="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200/80 border border-slate-200 text-xs font-bold text-slate-700 flex items-center gap-1.5 cursor-pointer transition-colors"
-              title="Toggle Mongolian / English"
+              onClick={() => setIsSettingsModalOpen(true)}
+              className="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200/80 border border-slate-200 text-xs font-bold text-slate-700 flex items-center gap-1.5 cursor-pointer transition-colors"
+              title={lang === 'mn' ? 'Тохиргоо' : 'Settings'}
             >
-              <Globe className="w-3.5 h-3.5 text-emerald-600" />
-              <span>{lang === 'mn' ? 'MN 🇲🇳' : 'EN 🇬🇧'}</span>
+              <Settings className="w-4 h-4 text-slate-700" />
+              <span className="hidden sm:inline">
+                {lang === 'mn' ? 'Тохиргоо' : 'Settings'}
+              </span>
             </button>
 
-            {authUser ? (
-              <button
-                type="button"
-                onClick={() => setIsAuthModalOpen(true)}
-                className="px-3.5 py-2 rounded-xl bg-emerald-50 border border-emerald-300 text-xs font-bold text-emerald-800 flex items-center gap-1.5 cursor-pointer"
-              >
-                <UserCheck className="w-3.5 h-3.5 text-emerald-600" />
-                <span>{authUser.name}</span>
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={() => setIsAuthModalOpen(true)}
-                className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-amber-500 text-white font-extrabold text-xs shadow-sm shadow-emerald-500/20 hover:brightness-105 flex items-center gap-1.5 cursor-pointer"
-              >
-                <LogIn className="w-3.5 h-3.5" />
-                <span>{t.loginBtn}</span>
-              </button>
-            )}
+            {/* Profile Button */}
+            <button
+              type="button"
+              onClick={() => setIsAuthModalOpen(true)}
+              className="px-3.5 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 text-xs font-extrabold text-emerald-900 flex items-center gap-1.5 cursor-pointer transition-colors"
+              title={lang === 'mn' ? 'Профайл' : 'Profile'}
+            >
+              <User className="w-4 h-4 text-emerald-600" />
+              <span>
+                {authUser
+                  ? authUser.name
+                  : profile.name || (lang === 'mn' ? 'Профайл' : 'Profile')}
+              </span>
+            </button>
           </div>
         </div>
       </header>
 
       {/* MAIN CONTENT CONTAINER */}
       <main className="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 pt-6">
-        {activeTab === 'intro' && (
-          <div className="space-y-8">
-            <IntroOnboarding
-              profile={profile}
-              plan={plan}
-              lang={lang}
-              authUser={authUser}
-              onOpenAuth={() => setIsAuthModalOpen(true)}
-              onUpdateProfile={setProfile}
-              onGoToHomeJourney={() => {
-                const el = document.getElementById('home-journey-section');
-                if (el) {
-                  el.scrollIntoView({ behavior: 'smooth' });
-                } else {
-                  setActiveTab('home');
-                  window.scrollTo({ top: 0, behavior: 'smooth' });
-                }
-              }}
-            />
-
-            {/* BOTTOM OF INTRO PAGE: HOME LINEAR JOURNEY & HEATMAP */}
-            <div id="home-journey-section" className="pt-4 border-t-2 border-emerald-200">
-              <HomeJourney
-                profile={profile}
-                plan={plan}
-                lang={lang}
-                todayLog={todayLog}
-                historyLogs={historyLogs}
-                friends={friends}
-                personalBestKcal={personalBestKcal}
-                onUpdateTodayLog={(updater) => {
-                  setTodayLog((prev) => updater(prev));
-                }}
-                onAddFriend={handleAddFriend}
-              />
-            </div>
-          </div>
+        {/* 1st SUBMENU: OVERVIEW (Ерөнхий) */}
+        {activeTab === 'overview' && (
+          <OverviewPage
+            profile={profile}
+            plan={plan}
+            lang={lang}
+            onUpdateProfile={setProfile}
+            onEditStep={handleEditIntroStep}
+            onGoToTeamTab={() => {
+              setActiveTab('team');
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }}
+          />
         )}
 
-        {activeTab === 'home' && (
+        {/* 2nd SUBMENU: БАГ (Team Linear Journey & Leaderboard) */}
+        {activeTab === 'team' && (
           <HomeJourney
             profile={profile}
             plan={plan}
@@ -250,104 +271,118 @@ export default function ZunygalnaApp() {
           />
         )}
 
-        {activeTab === 'learn' && <LearnSection profile={profile} lang={lang} />}
+        {/* 3rd SUBMENU: SHOP (Дэлгүүр) */}
+        {activeTab === 'shop' && <ShopSection lang={lang} />}
 
-        {activeTab === 'body' && (
-          <BodyRecompSection
-            profile={profile}
-            plan={plan}
-            lang={lang}
-            onUpdateProfile={setProfile}
-          />
+        {/* 4th SUBMENU: LEARN (Мэдлэг + Биеийн бүтэц) */}
+        {activeTab === 'learn' && (
+          <div className="space-y-10">
+            <LearnSection profile={profile} lang={lang} />
+            <div className="pt-6 border-t-2 border-emerald-200">
+              <BodyRecompSection
+                profile={profile}
+                plan={plan}
+                lang={lang}
+                onUpdateProfile={setProfile}
+              />
+            </div>
+          </div>
         )}
       </main>
 
-      {/* FIXED BOTTOM NAVIGATION BAR (WHITE / LIGHT THEME) */}
+      {/* STICKY BOTTOM NAVIGATION BAR (4 SUBMENUS: OVERVIEW, БАГ, SHOP, LEARN) */}
       <nav className="fixed bottom-0 left-0 right-0 z-40 backdrop-blur-xl bg-white/95 border-t border-slate-200 shadow-lg">
-        <div className="max-w-xl mx-auto px-3 py-2 grid grid-cols-4 gap-2">
-          <button
-            type="button"
-            onClick={() => {
-              setActiveTab('intro');
-              window.scrollTo({ top: 0, behavior: 'smooth' });
-            }}
-            className={`py-2 px-3 rounded-2xl flex flex-col items-center justify-center gap-1 transition-all cursor-pointer ${
-              activeTab === 'intro'
-                ? 'bg-emerald-50 text-emerald-700 border border-emerald-300 font-extrabold shadow-xs'
-                : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100/70'
-            }`}
-          >
-            <Sliders className="w-5 h-5" />
-            <span className="text-[11px]">
-              {lang === 'mn' ? 'Танилцуулга' : 'Intro & Plan'}
-            </span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              setActiveTab('home');
-              window.scrollTo({ top: 0, behavior: 'smooth' });
-            }}
-            className={`py-2 px-3 rounded-2xl flex flex-col items-center justify-center gap-1 transition-all cursor-pointer ${
-              activeTab === 'home'
-                ? 'bg-emerald-50 text-emerald-700 border border-emerald-300 font-extrabold shadow-xs'
-                : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100/70'
-            }`}
-          >
-            <Flame className="w-5 h-5" />
-            <span className="text-[11px]">{t.navHome}</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              setActiveTab('learn');
-              window.scrollTo({ top: 0, behavior: 'smooth' });
-            }}
-            className={`py-2 px-3 rounded-2xl flex flex-col items-center justify-center gap-1 transition-all cursor-pointer ${
-              activeTab === 'learn'
-                ? 'bg-emerald-50 text-emerald-700 border border-emerald-300 font-extrabold shadow-xs'
-                : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100/70'
-            }`}
-          >
-            <BookOpen className="w-5 h-5" />
-            <span className="text-[11px]">{t.navLearn}</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              setActiveTab('body');
-              window.scrollTo({ top: 0, behavior: 'smooth' });
-            }}
-            className={`py-2 px-3 rounded-2xl flex flex-col items-center justify-center gap-1 transition-all cursor-pointer ${
-              activeTab === 'body'
-                ? 'bg-emerald-50 text-emerald-700 border border-emerald-300 font-extrabold shadow-xs'
-                : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100/70'
-            }`}
-          >
-            <Activity className="w-5 h-5" />
-            <span className="text-[11px]">{t.navBody}</span>
-          </button>
+        <div className="max-w-xl mx-auto px-3 py-2 grid grid-cols-4 gap-1.5">
+          {[
+            {
+              id: 'overview' as ActiveSubmenu,
+              label: lang === 'mn' ? 'Ерөнхий' : 'Overview',
+              icon: <LayoutGrid className="w-4 h-4" />,
+              badge: `-${plan.totalDailyNetDeficitKcal}`,
+            },
+            {
+              id: 'team' as ActiveSubmenu,
+              label: lang === 'mn' ? 'Баг' : 'Team',
+              icon: <Users className="w-4 h-4" />,
+              badge: `${(todayLog.walkedMeters / 1000).toFixed(1)}km`,
+            },
+            {
+              id: 'shop' as ActiveSubmenu,
+              label: lang === 'mn' ? 'Дэлгүүр' : 'Shop',
+              icon: <ShoppingBag className="w-4 h-4" />,
+              badge: null,
+            },
+            {
+              id: 'learn' as ActiveSubmenu,
+              label: lang === 'mn' ? 'Мэдлэг' : 'Learn',
+              icon: <BookOpen className="w-4 h-4" />,
+              badge: null,
+            },
+          ].map((item) => {
+            const active = activeTab === item.id;
+            return (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => {
+                  setActiveTab(item.id);
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
+                className={`relative py-2 px-2 rounded-2xl flex flex-col items-center justify-center gap-1 transition-all cursor-pointer ${
+                  active
+                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-300 shadow-2xs'
+                    : 'text-slate-500 hover:text-slate-900'
+                }`}
+              >
+                <div className="flex items-center gap-1">
+                  {item.icon}
+                  {item.badge && (
+                    <span
+                      className={`text-[9px] font-extrabold px-1.5 py-0.2 rounded-full ${
+                        active
+                          ? 'bg-emerald-500 text-white'
+                          : 'bg-slate-100 text-slate-600'
+                      }`}
+                    >
+                      {item.badge}
+                    </span>
+                  )}
+                </div>
+                <span className="text-[11px] font-bold tracking-tight">
+                  {item.label}
+                </span>
+              </button>
+            );
+          })}
         </div>
       </nav>
 
-      {/* LOGIN / REGISTRATION MODAL */}
+      {/* PROFILE / AUTH MODAL */}
       <AuthModal
         isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
         lang={lang}
         currentName={profile.name}
-        onClose={() => setIsAuthModalOpen(false)}
-        onSuccessAuth={(userData) => {
-          setAuthUser(userData);
-          setProfile((prev) => ({ ...prev, name: userData.name }));
+        onSuccessAuth={(user) => {
+          setAuthUser(user);
+          setProfile((p) => ({ ...p, name: user.name }));
           try {
-            localStorage.setItem('zunygalna_auth_v1', JSON.stringify(userData));
+            localStorage.setItem('zunygalna_auth_v1', JSON.stringify(user));
           } catch {
             // Ignore
           }
         }}
+      />
+
+      {/* SETTINGS MODAL */}
+      <SettingsModal
+        isOpen={isSettingsModalOpen}
+        onClose={() => setIsSettingsModalOpen(false)}
+        lang={lang}
+        onChangeLang={setLang}
+        profile={profile}
+        onUpdateProfile={setProfile}
+        onRestartIntro={() => handleEditIntroStep(0)}
       />
     </div>
   );
